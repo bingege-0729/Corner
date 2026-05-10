@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+
+import static com.example.corner.common.RedisConstant.USER_MEMORY_KEY;
 
 @RestController
 @RequestMapping("/api")
@@ -44,6 +47,7 @@ public class CornerController {
     public ApiResponse<RecommendResponse> recommend(HttpServletRequest request, 
                                                        @RequestBody RecommendRequest recommendRequest) {
         Long userId = (Long) request.getAttribute("userId");
+
         RecommendResponse response = cornerService.recommend(userId, recommendRequest);
         return ApiResponse.success(response);
     }

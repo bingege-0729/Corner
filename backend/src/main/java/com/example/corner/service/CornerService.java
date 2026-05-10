@@ -3,10 +3,12 @@ package com.example.corner.service;
 import com.example.corner.dto.*;
 import com.example.corner.entity.*;
 import com.example.corner.repository.*;
+import com.example.corner.service.aiService.RecommendService;
 import com.example.corner.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -14,6 +16,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.example.corner.common.RedisConstant.USER_MEMORY_KEY;
 
 @Service
 public class CornerService {
@@ -35,6 +39,9 @@ public class CornerService {
     
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private RecommendService recommendService;
     
     /**
      * 手机号登录（自动注册）
@@ -78,30 +85,54 @@ public class CornerService {
     
     /**
      * 核心推荐
+     * @param userId 用户ID
+     * @param request  请求参数
+     * @return RecommendResponse
      */
     public RecommendResponse recommend(Long userId, RecommendRequest request) {
         RecommendResponse response = new RecommendResponse();
         
-        // TODO: 调用 LLM 生成 understanding（暂时使用简单逻辑）
-        response.setUnderstanding("懂了，你需要安静地待一会儿");
-        
-        // 查询用户记忆
+
+        if(request == null ||request.getUserInput()==null||request.getUserInput().trim().isEmpty()){
+            throw new IllegalArgumentException("输入内容不得为空");
+        }
+
+        // 生成记忆ID（redis的key）
+        String memoryId =USER_MEMORY_KEY + userId+ ":"+UUID.randomUUID();
+
+        //TODO:未来要引入Redis进行缓存大模型回答
+        //上传LLM大模型的回答
+        response.setUnderstanding(recommendService.chat(request.getUserInput(),memoryId));
+
+
+        // 查询用户去过的地方
         List<UserPlaceMemory> memories = userPlaceMemoryRepository.findByUserId(userId);
-        List<Long> memoryPlaceIds = memories.stream()
+
+        // 过滤掉用户DISLIKE
+        List<UserPlaceMemory> validMemories = memories.stream()
+                .filter(m->!"DISLIKE".equals(m.getInteractionType()))
+                .collect(Collectors.toList());
+
+        // 查询用户记忆对应的地点
+        List<Long> memoryPlaceIds = validMemories.stream()
                 .map(UserPlaceMemory::getPlaceId)
                 .collect(Collectors.toList());
-        
+
+        // 生成地点卡片（去过的+收藏的）
         List<PlaceCard> memoryMatches = new ArrayList<>();
         if (!memoryPlaceIds.isEmpty()) {
             List<PlaceEmotionLibrary> places = placeEmotionLibraryRepository.findAllById(memoryPlaceIds);
             Map<Long, PlaceEmotionLibrary> placeMap = places.stream()
                     .collect(Collectors.toMap(PlaceEmotionLibrary::getId, p -> p));
-            
+
+            //TODO: 目前逻辑有误，没有根据用户心情+收藏点+距离的优先级
+            //获取地点的标签
             for (UserPlaceMemory memory : memories) {
                 PlaceEmotionLibrary place = placeMap.get(memory.getPlaceId());
                 if (place != null) {
                     PlaceCard card = buildPlaceCard(place, memory, request.getUserLat(), request.getUserLng(), "visited");
                     memoryMatches.add(card);
+
                 }
             }
         }
@@ -114,6 +145,8 @@ public class CornerService {
         
         return response;
     }
+
+
     
     /**
      * 推荐反馈
