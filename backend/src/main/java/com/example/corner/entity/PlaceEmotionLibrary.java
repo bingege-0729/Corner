@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
 
+/**
+ * 地点emos库
+ */
 @Data
 @Entity
 @Table(name = "place_emotion_library")

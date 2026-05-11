@@ -7,6 +7,9 @@ public interface RecommendService {
     
     /**
      * 核心推荐
+     * @param userId 用户ID
+     * @param request 请求DTO
+     * @return RecommendResponse
      */
     RecommendResponse recommend(Long userId, RecommendRequest request);
 }

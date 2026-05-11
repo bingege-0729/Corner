@@ -1,12 +1,11 @@
 package com.example.corner.dto;
 
 import lombok.Data;
-import reactor.core.publisher.Flux;
 
 import java.util.List;
 
 @Data
 public class RecommendResponse {
-    private Flux<String> understanding; //大模型输出
-    private List<PlaceCard> emotionMatches; //心情匹配的地点
+    private String understanding; // 大模型输出的理解和分析
+    private List<PlaceCard> emotionMatches; // 心情匹配的地点
 }

@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PlaceEmotionLibraryRepository extends JpaRepository<PlaceEmotionLibrary, Long> {
+    PlaceEmotionLibrary findByPlaceName(String placeName);
 }

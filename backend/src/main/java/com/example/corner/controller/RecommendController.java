@@ -17,6 +17,9 @@ public class RecommendController {
     
     /**
      * 接口3：核心推荐
+     * @param recommendRequest 请求DTO
+     * @param request 请求对象
+     * @return 返回VO
      */
     @PostMapping("/recommend")
     public Result<RecommendResponse> recommend(HttpServletRequest request, 

@@ -13,7 +13,7 @@ public class PlaceCard {
     private String oneSentence; // 一句话推荐
     private String imageUrl; // 图片URL
     private String distanceText;  // 距离文本
-    private String matchType; // 匹配类型
+    private String matchType; // 匹配类型 （收藏/历史/不感兴趣）
     private String matchReason; // 匹配原因
     private String lastVisited; // 最后访问时间
 }
