@@ -4,7 +4,7 @@
 Corner 是一个基于情绪推荐的地点推荐系统，根据用户当前的心情和状态，推荐适合的情绪地点。
 
 ## 技术栈
-- Spring Boot 4.0.6
+- Spring Boot 3.5.14
 - Java 17
 - MySQL 8.0+
 - JPA/Hibernate
@@ -12,6 +12,7 @@ Corner 是一个基于情绪推荐的地点推荐系统，根据用户当前的�
 - Lombok
 - Redis (用于会话记忆存储)
 - LangChain4j (AI集成框架)
+- DeepSeek (大语言模型)
 
 ## 项目结构
 ```
@@ -199,7 +200,12 @@ spring:
       port: 6379
 ```
 
-3. 修改 JWT 密钥（至少32字符）：
+3. 配置 DeepSeek API 密钥（在 `.env` 文件中）：
+```env
+LLM_API_KEY=your_deepseek_api_key_here
+```
+
+4. 修改 JWT 密钥（至少32字符）：
 ```yaml
 jwt:
   secret: your-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
@@ -267,16 +273,16 @@ curl -X POST http://localhost:8080/api/recommend \
 
 ## 注意事项
 
-1. **JWT 密钥**: 生产环境务必修改为强密钥（至少32字符）
+1. **DeepSeek API 密钥**: 在 `.env` 文件中配置 `LLM_API_KEY`，确保密钥有效
 2. **数据库密码**: 根据实际情况修改数据库密码
 3. **Redis 配置**: 确保 Redis 服务正常运行，用于会话记忆存储
-4. **LLM 集成**: 当前版本集成了 LangChain4j 框架，需要配置相应的 LLM API 密钥
+4. **JWT 密钥**: 生产环境务必修改为强密钥（至少32字符）
 5. **距离计算**: 使用了简化的 Haversine 公式计算距离
 6. **图片资源**: 需要自行准备图片资源或修改为外部图片链接
 
 ## 后续优化方向
 
-1. 完善 LangChain4j LLM 集成，实现更精准的情绪解析和文案生成
+1. ✅ 已完成 DeepSeek LLM 集成，实现情绪解析和文案生成
 2. 优化推荐算法，增加更多维度的匹配（时间、天气、用户偏好等）
 3. 添加缓存机制提升性能（地点信息、标签数据等）
 4. 增加日志记录和异常处理

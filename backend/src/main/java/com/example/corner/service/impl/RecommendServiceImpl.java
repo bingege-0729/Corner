@@ -40,9 +40,11 @@ public class RecommendServiceImpl implements RecommendService {
         
         // 2. 调用LLM的getRecommend方法，让LLM自动调用Tool获取推荐结果
         RecommendResponse response = recommendAIService.getRecommend(
+                userId,
                 "用户情绪: " + mood + 
-                ", 用户输入: " + request.getUserInput() +
-                ", 用户位置: 纬度" + request.getUserLat() + ", 经度" + request.getUserLng(),
+                ", 用户输入: " + request.getUserInput(),
+                request.getUserLat(),
+                request.getUserLng(),
                 USER_MEMORY_KEY_PREFIX + userId
         );
         
