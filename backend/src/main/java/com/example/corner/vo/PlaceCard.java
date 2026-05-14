@@ -22,4 +22,5 @@ public class PlaceCard {
     private String tips; // 注意事项/贴士
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private String status;
 }
