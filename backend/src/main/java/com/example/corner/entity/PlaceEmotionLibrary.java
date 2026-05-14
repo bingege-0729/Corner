@@ -9,7 +9,7 @@ import java.math.BigDecimal;
  */
 @Data
 @Entity
-@Table(name = "place_emotion_library")
+@Table(name = "place")
 public class PlaceEmotionLibrary {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

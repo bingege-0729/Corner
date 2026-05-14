@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "emotion_tag_dict")
+@Table(name = "emotion_tag")
 public class EmotionTagDict {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

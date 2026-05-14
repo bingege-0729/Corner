@@ -1,8 +1,8 @@
 package com.example.corner.controller;
 
 import com.example.corner.common.Result;
-import com.example.corner.dto.TagResponse;
 import com.example.corner.service.TagService;
+import com.example.corner.vo.TagResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +18,7 @@ public class TagController {
     private TagService tagService;
     
     /**
-     * 获取全部标签
+     * 查询全部标签
      */
     @GetMapping("/tags")
     public Result<Map<String, Object>> getTags() {

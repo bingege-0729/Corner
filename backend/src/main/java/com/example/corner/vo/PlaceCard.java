@@ -1,8 +1,9 @@
-package com.example.corner.dto;
+package com.example.corner.vo;
 
 import lombok.Data;
 import java.util.List;
 
+// 地点卡片
 @Data
 public class PlaceCard {
     private Long placeId; // 地点ID

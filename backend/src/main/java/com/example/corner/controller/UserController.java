@@ -1,10 +1,11 @@
 package com.example.corner.controller;
 
 import com.example.corner.common.Result;
-import com.example.corner.dto.AvatarResponse;
 import com.example.corner.dto.LoginRequest;
-import com.example.corner.dto.LoginResponse;
 import com.example.corner.service.UserService;
+import com.example.corner.vo.AvatarResponse;
+import com.example.corner.vo.LoginResponse;
+import com.example.corner.vo.UserStatsResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -49,4 +50,26 @@ public class UserController {
         res.setAvatarUrl(url);
         return Result.success(res);
     }
+    
+    /**
+     * 退出登录
+     */
+    @PostMapping("/logout")
+    public Result<Void> logout(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        userService.logout(userId);
+        return Result.success();
+    }
+    
+    /**
+     * 获取用户统计数据
+     */
+    @GetMapping("/stats")
+    public Result<UserStatsResponse> getUserStats(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        UserStatsResponse stats = userService.getUserStats(userId);
+        return Result.success(stats);
+    }
+
+
 }

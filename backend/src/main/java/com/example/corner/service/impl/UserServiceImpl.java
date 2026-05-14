@@ -1,13 +1,20 @@
 package com.example.corner.service.impl;
 
 import com.example.corner.common.Result;
-import com.example.corner.dto.AvatarResponse;
 import com.example.corner.dto.LoginRequest;
-import com.example.corner.dto.LoginResponse;
+import com.example.corner.entity.PlaceEmotionLibrary;
 import com.example.corner.entity.UserInfo;
+import com.example.corner.entity.UserMoodRecord;
+import com.example.corner.entity.UserPlaceMemory;
+import com.example.corner.repository.PlaceEmotionLibraryRepository;
 import com.example.corner.repository.UserInfoRepository;
+import com.example.corner.repository.UserMoodRecordRepository;
+import com.example.corner.repository.UserPlaceMemoryRepository;
 import com.example.corner.service.UserService;
 import com.example.corner.util.JwtUtil;
+import com.example.corner.vo.AvatarResponse;
+import com.example.corner.vo.LoginResponse;
+import com.example.corner.vo.UserStatsResponse;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +34,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -37,6 +46,15 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private UserPlaceMemoryRepository userPlaceMemoryRepository;
+    
+    @Autowired
+    private PlaceEmotionLibraryRepository placeEmotionLibraryRepository;
+    
+    @Autowired
+    private UserMoodRecordRepository userMoodRecordRepository;
 
     /**
      * 文件上传目录
@@ -110,5 +128,55 @@ public class UserServiceImpl implements UserService {
         userInfoRepository.save(user);
 
         return user.getAvatarUrl();
+    }
+    
+    /**
+     * 退出登录
+     */
+    @Override
+    public void logout(Long userId) {
+        // JWT 是无状态的，客户端只需删除 token 即可
+        // 这里可以做一些清理工作，比如清除 Redis 中的会话数据（如果有）
+        // 目前简单返回，前端负责删除 token
+    }
+    
+    /**
+     * 获取用户统计数据
+     */
+    @Override
+    public UserStatsResponse getUserStats(Long userId) {
+        UserStatsResponse stats = new UserStatsResponse();
+        
+        // 1. 统计去过的不同地点数量（interaction_type = 'VISITED'）
+        List<UserPlaceMemory> visitedMemories = userPlaceMemoryRepository
+                .findByUserIdAndInteractionType(userId, "VISITED");
+        
+        // 去重统计不同的地点
+        long visitedPlacesCount = visitedMemories.stream()
+                .map(UserPlaceMemory::getPlaceId)
+                .distinct()
+                .count();
+        
+        stats.setVisitedPlacesCount(visitedPlacesCount);
+        
+        // 2. 统计各情绪标签使用次数
+        List<UserMoodRecord> moodRecords = userMoodRecordRepository.findByUserId(userId);
+        
+        Map<String, Integer> moodStats = new HashMap<>();
+        moodStats.put("好心情", 0);
+        moodStats.put("平静", 0);
+        moodStats.put("伤心", 0);
+        
+        // 统计每个情绪的出现次数
+        for (UserMoodRecord record : moodRecords) {
+            String mood = record.getMoodTag();
+            if (moodStats.containsKey(mood)) {
+                moodStats.put(mood, moodStats.get(mood) + 1);
+            }
+        }
+        
+        stats.setMoodStats(moodStats);
+        
+        return stats;
     }
 }

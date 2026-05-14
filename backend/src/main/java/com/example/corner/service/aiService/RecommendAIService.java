@@ -1,7 +1,7 @@
 package com.example.corner.service.aiService;
 
-import com.example.corner.dto.RecommendResponse;
 import com.example.corner.entity.UserPlaceMemory;
+import com.example.corner.vo.RecommendResponse;
 
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;

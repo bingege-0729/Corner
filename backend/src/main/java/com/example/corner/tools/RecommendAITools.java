@@ -1,6 +1,5 @@
 package com.example.corner.tools;
 
-import com.example.corner.dto.PlaceCard;
 import com.example.corner.entity.EmotionTagDict;
 import com.example.corner.entity.PlaceEmotionLibrary;
 import com.example.corner.entity.PlaceTagRelation;
@@ -9,6 +8,7 @@ import com.example.corner.repository.EmotionTagDictRepository;
 import com.example.corner.repository.PlaceEmotionLibraryRepository;
 import com.example.corner.repository.PlaceTagRelationRepository;
 import com.example.corner.repository.UserPlaceMemoryRepository;
+import com.example.corner.vo.PlaceCard;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import org.jspecify.annotations.NonNull;

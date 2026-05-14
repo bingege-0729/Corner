@@ -1,9 +1,10 @@
-package com.example.corner.dto;
+package com.example.corner.vo;
 
 import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
 
+// 地点详情
 @Data
 public class PlaceDetailResponse {
     private Long placeId;

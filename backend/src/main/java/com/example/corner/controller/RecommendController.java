@@ -2,9 +2,9 @@ package com.example.corner.controller;
 
 import com.example.corner.common.Result;
 import com.example.corner.dto.RecommendRequest;
-import com.example.corner.dto.RecommendResponse;
 import com.example.corner.service.ChatService;
 import com.example.corner.service.RecommendService;
+import com.example.corner.vo.RecommendResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -22,9 +22,9 @@ public class RecommendController {
     private ChatService chatService;
     
     /**
-     * 核心推荐接口
-     * @param request HTTP请求对象
-     * @param recommendRequest 请求DTO
+     * 推荐接口
+     * @param request
+     * @param recommendRequest
      * @return 返回推荐结果
      */
     @PostMapping("/recommend")
