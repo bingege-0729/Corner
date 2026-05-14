@@ -28,7 +28,7 @@ const fetchAITips = async () => {
   loadingTips.ref = true;
   try {
     const res = await getTravelTips(props.place.placeId);
-    if (res.code === 0) {
+    if (res.code === 200) {
       travelTips.value = res.data;
     }
   } catch (err) {
@@ -41,7 +41,7 @@ const fetchAITips = async () => {
 const handleBookmark = async () => {
   try {
     const res = await toggleBookmark(props.place.placeId);
-    if (res.code === 0) {
+    if (res.code === 200) {
       isBookmarked.value = !isBookmarked.value;
     }
   } catch (err) {
