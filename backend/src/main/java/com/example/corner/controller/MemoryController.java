@@ -19,19 +19,18 @@ public class MemoryController {
      * 接口4：推荐反馈
      */
     @PostMapping("/place/feedback")
-    public Result<Void> feedback(HttpServletRequest request, 
-                                       @RequestBody FeedbackRequest feedbackRequest) {
+    public Result<Void> feedback(HttpServletRequest request,
+                                 @RequestBody FeedbackRequest feedbackRequest) {
         Long userId = (Long) request.getAttribute("userId");
         memoryService.feedback(userId, feedbackRequest);
         return Result.success();
     }
-    
+
     /**
      * 接口5：我的记忆列表
      */
     @GetMapping("/memory/list")
-    public Result<MemoryListResponse> getMemoryList(HttpServletRequest request,
-                                                          @RequestParam(required = false) String type) {
+    public Result<MemoryListResponse> getMemoryList(HttpServletRequest request, @RequestParam(required = false) String type) {
         Long userId = (Long) request.getAttribute("userId");
         MemoryListResponse response = memoryService.getMemoryList(userId, type);
         return Result.success(response);

@@ -7,14 +7,18 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.spring.AiService;
+import dev.langchain4j.service.spring.AiServiceWiringMode;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
 
 @AiService(
+        wiringMode = AiServiceWiringMode.EXPLICIT,
         chatModel = "openAiChatModel",
         tools = "recommendAITools",
-        chatMemoryProvider = "redisChatMemoryRepository"
+        chatMemoryProvider = "redisChatMemoryProvider"
+
+
 )
 public interface RecommendAIService {
     /**
@@ -89,24 +93,22 @@ public interface RecommendAIService {
      * @return 推荐响应（包含LLM理解和匹配的地点列表）
      */
     @SystemMessage("""
-            你是一个地点推荐助手。根据用户提供的情绪、位置和偏好，调用合适的工具来推荐地点。
+            你是一个地点推荐助手。当用户表达了任何想出门、想去某个地方的意图时，立即调用 getSuitablePlaceBymoodAndsave 工具。
             
-            你可以使用以下工具：
-            - getSuitablePlaceByMoodAndLocation: 根据用户情绪、收藏记录和位置，推荐符合条件的地点
+                规则：
+                1. 用户说"想去..."、"找个..."、"推荐..."、"有什么..." → 立即调工具
+                2. 用户说心情但没说要出门 → 简短共情，调工具推荐（默认用户想出门）
+                3. 只有用户在纯粹闲聊（如问天气、说笑话）时才不调工具
             
-            请按照以下步骤操作：
-            1. 分析用户输入，提取情绪标签、位置信息
-            2. 调用 getSuitablePlaceByMoodAndLocation 工具获取推荐地点，传入userId、情绪、纬度和经度
-            3. 返回包含understanding（你的理解和分析）和emotionMatches（推荐的地点列表）的响应
+                调用工具的参数从用户输入中提取：
+                - mood: 用户想要的情绪标签，如"安静"、"治愈"、"热闹"
+                - userId: 用户ID
+                - latitude: 纬度
+                - longitude: 经度
             
-            understanding 字段应该包含：
-            - 对用户情绪的理解
-            - 推荐策略说明
-            - 为什么推荐这些地点
-            
-            emotionMatches 字段应该包含工具返回的地点列表。
-            """)
-    public RecommendResponse getRecommend(@UserMessage Long userId, @UserMessage String userInput, @UserMessage java.math.BigDecimal latitude, @UserMessage java.math.BigDecimal longitude, @MemoryId String memoryId);
+                返回的 understanding 要包含共情语。
+                    """)
+    public RecommendResponse getRecommend(@UserMessage String userMessage, @MemoryId String memoryId);
 
 
 }

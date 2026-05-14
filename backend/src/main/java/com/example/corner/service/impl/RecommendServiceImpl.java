@@ -31,23 +31,15 @@ public class RecommendServiceImpl implements RecommendService {
      */
     @Override
     public RecommendResponse recommend(Long userId, RecommendRequest request) {
-        // 1. 如果用户未直接给出情绪，通过LLM大模型根据用户画像进行匹配
-        String mood = request.getMood();
-        if (mood == null || mood.isEmpty()) {
-            List<UserPlaceMemory> userPlaceMemory = userPlaceMemoryRepository.findByUserId(userId);
-            mood = recommendAIService.getMood(request.getUserInput(), userPlaceMemory, USER_MOOD_KEY_PREFIX + userId);
-        }
-        
-        // 2. 调用LLM的getRecommend方法，让LLM自动调用Tool获取推荐结果
-        RecommendResponse response = recommendAIService.getRecommend(
+        String userMessage = String.format(
+                "userId=%d, 用户输入=%s, 纬度=%s, 经度=%s, 用户心情=%s",
                 userId,
-                "用户情绪: " + mood + 
-                ", 用户输入: " + request.getUserInput(),
+                request.getUserInput() != null ? request.getUserInput() : "",
                 request.getUserLat(),
                 request.getUserLng(),
-                USER_MEMORY_KEY_PREFIX + userId
+                request.getMood() != null ? request.getMood() : ""
         );
-        
-        return response;
+
+        return recommendAIService.getRecommend(userMessage, USER_MEMORY_KEY_PREFIX + userId);
     }
 }
