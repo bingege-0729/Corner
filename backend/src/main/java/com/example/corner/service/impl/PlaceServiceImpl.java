@@ -194,7 +194,7 @@ public class PlaceServiceImpl implements PlaceService {
                 
                 // 构建天气提示
                 StringBuilder tip = new StringBuilder();
-                tip.append(String.format("%s今天%s，气温%s°C。", city, weather, temperature));
+                tip.append(String.format("%s今天%s，气温%s。", city, weather, temperature));
                 
                 // 根据天气给出建议
                 if (weather.contains("雨") || weather.contains("Rain")) {
