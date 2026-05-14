@@ -39,20 +39,17 @@ public class RecommendServiceImpl implements RecommendService {
     @Override
     @Transactional
     public RecommendResponse recommend(Long userId, RecommendRequest request) {
-        // 1. 记录用户当前的心情标签（映射到 好心情、平静、烦闷时）
+        // 1. 记录用户当前的心情标签
         recordUserMood(userId, request);
 
-        // 2. 调用 AI 推荐
-        String userMessage = String.format(
-                "userId=%d, 用户输入=%s, 纬度=%s, 经度=%s, 用户心情=%s",
-                userId,
+        // 2. 调用 AI 推荐（分参数传递，提高工具调用准确率）
+        return recommendAIService.getRecommend(
                 request.getUserInput() != null ? request.getUserInput() : "",
+                userId,
                 request.getUserLat(),
                 request.getUserLng(),
-                request.getMood() != null ? request.getMood() : ""
+                USER_MEMORY_KEY_PREFIX + userId
         );
-
-        return recommendAIService.getRecommend(userMessage, USER_MEMORY_KEY_PREFIX + userId);
     }
 
     private void recordUserMood(Long userId, RecommendRequest request) {
