@@ -1,5 +1,6 @@
 package com.example.corner.service.impl;
 
+import com.example.corner.dto.PlaceCard;
 import com.example.corner.dto.PlaceDetailResponse;
 import com.example.corner.dto.UserHistory;
 import com.example.corner.entity.EmotionTagDict;
@@ -82,5 +83,20 @@ public class PlaceServiceImpl implements PlaceService {
         response.setYourHistory(userHistory);
         
         return response;
+    }
+
+    @Override
+    public List<PlaceCard> getAllPlaces() {
+        return (List<PlaceCard>) placeEmotionLibraryRepository.findAll().stream()
+                .map(place -> {
+                    PlaceCard card = new PlaceCard();
+                    card.setPlaceId(place.getId());
+                    card.setPlaceName(place.getPlaceName());
+                    card.setAddress(place.getAddress());
+                    card.setMoodTags(card.getMoodTags());
+                    card.setCrowdLevel(place.getCrowdLevel());
+                    card.setOneSentence(place.getOneSentence());
+                    return  card;
+                });
     }
 }

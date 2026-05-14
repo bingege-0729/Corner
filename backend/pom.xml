@@ -122,10 +122,17 @@
             <version>1.0.1-beta6</version>
         </dependency>
         <dependency>
+        <!--RAG依赖（基础版本）-->
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>7.12.0</version>
             <scope>test</scope>
+        </dependency>
+        <!--langchain4j对redis向量数据库的支持-->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-community-redis-spring-boot-starter</artifactId>
+            <version>1.0.1-beta6</version>
         </dependency>
     </dependencies>
 
