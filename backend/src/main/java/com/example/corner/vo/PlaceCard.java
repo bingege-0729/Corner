@@ -17,4 +17,5 @@ public class PlaceCard {
     private String matchType; // 匹配类型 （收藏/历史/不感兴趣）
     private String matchReason; // 匹配原因
     private String lastVisited; // 最后访问时间
+    private String tips; // 注意事项/贴士
 }

@@ -51,10 +51,10 @@ public class PlaceServiceImpl implements PlaceService {
         if (placeId == null || placeId == -1L) {
             throw new RuntimeException("该地点为网络搜索结果，暂无详细信息");
         }
-        
+
         PlaceEmotionLibrary place = placeEmotionLibraryRepository.findById(placeId)
                 .orElseThrow(() -> new RuntimeException("地点不存在，ID: " + placeId));
-        
+
         // 获取标签
         List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(placeId);
         List<Long> tagIds = relations.stream()
@@ -64,7 +64,7 @@ public class PlaceServiceImpl implements PlaceService {
         List<String> moodTags = tags.stream()
                 .map(EmotionTagDict::getTagName)
                 .collect(Collectors.toList());
-        
+
         // 获取用户历史
         Optional<UserPlaceMemory> memoryOpt = userPlaceMemoryRepository.findByUserIdAndPlaceId(userId, placeId);
         UserHistory userHistory = new UserHistory();
@@ -79,7 +79,7 @@ public class PlaceServiceImpl implements PlaceService {
             userHistory.setHasVisited(false);
             userHistory.setVisitCount(0);
         }
-        
+
         PlaceDetailResponse response = new PlaceDetailResponse();
         response.setPlaceId(place.getId());
         response.setPlaceName(place.getPlaceName());
@@ -94,10 +94,10 @@ public class PlaceServiceImpl implements PlaceService {
         response.setImageUrl(place.getImageUrl());
         response.setTips(place.getTips());
         response.setYourHistory(userHistory);
-        
+
         return response;
     }
-    
+
     /**
      * 生成出行温馨提示
      */
@@ -107,7 +107,7 @@ public class PlaceServiceImpl implements PlaceService {
         if (placeId == null || placeId == -1L) {
             throw new RuntimeException("该地点为网络搜索结果，无法生成出行提示");
         }
-        
+
         // 1. 获取地点信息
         PlaceEmotionLibrary place = placeEmotionLibraryRepository.findById(placeId)
                 .orElseThrow(() -> new RuntimeException("地点不存在，ID: " + placeId));

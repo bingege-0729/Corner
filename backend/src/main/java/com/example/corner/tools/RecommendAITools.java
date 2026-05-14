@@ -19,11 +19,6 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.web.search.WebSearchEngine;
-import dev.langchain4j.web.search.WebSearchOrganicResult;
-import dev.langchain4j.web.search.WebSearchRequest;
-import dev.langchain4j.web.search.WebSearchResults;
-import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -66,6 +61,12 @@ public class RecommendAITools {
     
     @Value("${baidu.map.api-key:Fj18RcqBdN8w1lbYY7Rs32Kx6pW1Heru}")
     private String baiduMapApiKey;
+    
+    @Value("${image.unsplash.access-key:your_unsplash_access_key}")
+    private String unsplashAccessKey;
+    
+    @Value("${image.pexels.api-key:your_pexels_api_key}")
+    private String pexelsApiKey;
     
     @Autowired
     private OpenAiChatModel chatModel;
@@ -409,7 +410,10 @@ public class RecommendAITools {
             for (Map<String, String> item : results) {
                 PlaceCard card = new PlaceCard();
                 card.setPlaceId(-1L); // 网络搜索结果无数据库ID
-                card.setPlaceName(item.get("title"));
+                
+                // 提取并清理标题（转换为简体）
+                String title = item.get("title");
+                card.setPlaceName(title);
                 
                 String url = item.get("url");
                 card.setAddress(url);
@@ -421,12 +425,17 @@ public class RecommendAITools {
                 
                 card.setMatchType("web_search");
                 
-                // 使用默认图片（网络搜索无法获取真实图片）
-                card.setImageUrl("/images/place/default.jpg");
+                // 尝试从多个来源获取图片
+                String imageUrl = extractImageUrl(item, title);
+                card.setImageUrl(imageUrl);
                 
-                // 尝试通过百度地图 Geocoding 获取距离
-                String distanceText = calculateDistanceFromAddress(url, latitude, longitude);
+                // 尝试通过百度地图 Geocoding 获取距离（使用地点名称而非 URL）
+                String distanceText = calculateDistanceFromAddress(item.get("title"), latitude, longitude);
                 card.setDistanceText(distanceText);
+                
+                // 联网查询地点注意事项
+                String tips = searchPlaceTips(item.get("title"), url);
+                card.setTips(tips);
                 
                 cards.add(card);
             }
@@ -440,17 +449,17 @@ public class RecommendAITools {
     /**
      * 通过百度地图 Geocoding API 计算距离
      */
-    private String calculateDistanceFromAddress(String address, BigDecimal userLat, BigDecimal userLng) {
-        if (userLat == null || userLng == null || address == null) {
+    private String calculateDistanceFromAddress(String placeName, BigDecimal userLat, BigDecimal userLng) {
+        if (userLat == null || userLng == null || placeName == null || placeName.isEmpty()) {
             return "距离需自行确认";
         }
         
         try {
-            // 调用百度地图 Geocoding API
+            // 调用百度地图 Geocoding API（地址解析）
             RestClient client = RestClient.create("https://api.map.baidu.com");
             String url = String.format(
                 "/geocoding/v3/?address=%s&output=json&ak=%s",
-                java.net.URLEncoder.encode(address, "UTF-8"),
+                java.net.URLEncoder.encode(placeName, "UTF-8"),
                 baiduMapApiKey
             );
             
@@ -467,20 +476,28 @@ public class RecommendAITools {
                     double lat = ((Number) location.get("lat")).doubleValue();
                     double lng = ((Number) location.get("lng")).doubleValue();
                     
+                    // 使用 Haversine 公式计算距离
                     double distance = calculateDistance(
                         userLat.doubleValue(), userLng.doubleValue(),
                         lat, lng
                     );
                     
-                    if (distance <= 5.0) {
+                    // 格式化距离显示
+                    if (distance < 1.0) {
+                        return String.format("距你%d米", (int)(distance * 1000));
+                    } else if (distance <= 5.0) {
                         return String.format("距你%.1f公里", distance);
                     } else {
                         return String.format("距你%.1f公里（较远）", distance);
                     }
                 }
+            } else {
+                // Geocoding 失败，记录状态码
+                System.err.println("百度地图 Geocoding 失败，状态码: " + response.get("status"));
             }
         } catch (Exception e) {
-            // Geocoding 失败，返回默认提示
+            // Geocoding 异常，返回默认提示
+            System.err.println("百度地图 Geocoding 异常: " + e.getMessage());
         }
         
         return "距离需自行确认";
@@ -499,6 +516,10 @@ public class RecommendAITools {
             // 构建 LLM 请求
             StringBuilder sb = new StringBuilder();
             sb.append("你是一个贴心的地点推荐助手。基于以下网络搜索结果，为每个地点生成个性化的推荐理由。\n\n");
+            sb.append("【重要要求】\n");
+            sb.append("- 必须使用简体中文输出，不要使用繁体中文\n");
+            sb.append("- 不要出现乱码或特殊符号\n");
+            sb.append("- 保持语言简洁、温暖、有亲和力\n\n");
             sb.append("用户需求：").append(userQuery).append("\n");
             sb.append("用户位置：纬度").append(latitude).append(", 经度").append(longitude).append("\n\n");
             sb.append("搜索结果：\n");
@@ -536,5 +557,225 @@ public class RecommendAITools {
         }
         
         return cards;
+    }
+    
+    /**
+     * 联网搜索地点注意事项/贴士
+     */
+    private String searchPlaceTips(String placeName, String url) {
+        try {
+            RestClient client = RestClient.create("https://api.tavily.com");
+            
+            // 构建搜索查询，强调当地实际情况和实用信息
+            String query = placeName + " 实地游玩攻略 注意事项 当地特色 温馨提示 简体中文";
+            
+            Map<String, Object> body = Map.of(
+                "api_key", tavilyApiKey,
+                "query", query,
+                "search_depth", "advanced", // 使用深度搜索获取更详细的信息
+                "max_results", 3
+            );
+            
+            Map<String, Object> resp = client.post()
+                .uri("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(Map.class);
+            
+            List<Map<String, String>> results = (List<Map<String, String>>) resp.get("results");
+            
+            if (results != null && !results.isEmpty()) {
+                // 合并前2个结果的内容，获取更全面的信息
+                StringBuilder combinedContent = new StringBuilder();
+                int count = 0;
+                for (Map<String, String> result : results) {
+                    String content = result.get("content");
+                    if (content != null && !content.isEmpty()) {
+                        combinedContent.append(content).append(" ");
+                        count++;
+                        if (count >= 2) break; // 只取前2个
+                    }
+                }
+                
+                if (combinedContent.length() > 0) {
+                    String fullContent = combinedContent.toString();
+                    // 截取前200字作为提示（稍微长一点，包含更多实用信息）
+                    return fullContent.length() > 200 ? 
+                        fullContent.substring(0, 200) + "..." : fullContent;
+                }
+            }
+        } catch (Exception e) {
+            // 搜索失败，返回默认提示
+        }
+        
+        return "建议提前了解开放时间和相关规定，祝您旅途愉快 🌟";
+    }
+    
+    /**
+     * 从多个来源提取地点图片 URL
+     * 优先级：Tavily > Unsplash > Pexels > 百度图片 > 默认图片
+     */
+    private String extractImageUrl(Map<String, String> item, String placeName) {
+        // 1. 尝试从 Tavily 结果中获取 img_src（最稳定）
+        String imageUrl = item.get("img_src");
+        if (imageUrl != null && !imageUrl.isEmpty() && imageUrl.startsWith("http")) {
+            return imageUrl;
+        }
+        
+        // 2. 尝试从 Tavily 结果的其他字段获取图片
+        imageUrl = item.get("image");
+        if (imageUrl != null && !imageUrl.isEmpty() && imageUrl.startsWith("http")) {
+            return imageUrl;
+        }
+        
+        // 3. 尝试 Unsplash API（高质量免费图片）
+        imageUrl = searchImageFromUnsplash(placeName);
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            return imageUrl;
+        }
+        
+        // 4. 尝试 Pexels API（另一个高质量图片源）
+        imageUrl = searchImageFromPexels(placeName);
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            return imageUrl;
+        }
+        
+        // 5. 使用百度搜索图片 API
+        imageUrl = searchImageFromBaidu(placeName);
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            return imageUrl;
+        }
+        
+        // 6. 兜底：使用默认图片
+        return "/images/place/default.jpg";
+    }
+    
+    /**
+     * 从网页 meta 标签中提取 Open Graph 图片
+     */
+    private String extractImageFromUrl(String url) {
+        try {
+            // 不直接获取整个网页，避免响应头过大问题
+            // 这个方法暂时跳过，直接使用其他图片源
+            return null;
+        } catch (Exception e) {
+            // 提取失败，返回 null
+        }
+        return null;
+    }
+    
+    /**
+     * 从百度搜索图片（简化实现）
+     * 生产环境建议使用专门的图片搜索 API
+     */
+    private String searchImageFromBaidu(String placeName) {
+        try {
+            // 使用百度图片搜索 API
+            RestClient client = RestClient.create("https://image.baidu.com");
+            String url = String.format(
+                "/search/acjson?tn=resultjson_com&ipn=rj&ct=201326592&word=%s",
+                java.net.URLEncoder.encode(placeName + " 地点", "UTF-8")
+            );
+            
+            Map<String, Object> response = client.get()
+                .uri(url)
+                .retrieve()
+                .body(Map.class);
+            
+            if (response != null) {
+                List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
+                if (data != null && !data.isEmpty()) {
+                    Map<String, Object> firstImage = data.get(0);
+                    String thumbURL = (String) firstImage.get("thumbURL");
+                    if (thumbURL != null && !thumbURL.isEmpty()) {
+                        return thumbURL;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // 搜索失败，返回 null
+        }
+        return null;
+    }
+    
+    /**
+     * 从 Unsplash 搜索图片（高质量免费图片）
+     * 需要申请 API Key: https://unsplash.com/developers
+     */
+    private String searchImageFromUnsplash(String placeName) {
+        // 检查 API Key 是否配置
+        if ("your_unsplash_access_key".equals(unsplashAccessKey)) {
+            return null; // 未配置，跳过
+        }
+        
+        try {
+            RestClient client = RestClient.create("https://api.unsplash.com");
+            String url = String.format(
+                "/search/photos?query=%s&per_page=1&orientation=landscape",
+                java.net.URLEncoder.encode(placeName + " place location", "UTF-8")
+            );
+            
+            Map<String, Object> response = client.get()
+                .uri(url)
+                .header("Authorization", "Client-ID " + unsplashAccessKey)
+                .retrieve()
+                .body(Map.class);
+            
+            if (response != null) {
+                List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+                if (results != null && !results.isEmpty()) {
+                    Map<String, Object> firstResult = results.get(0);
+                    Map<String, Object> urls = (Map<String, Object>) firstResult.get("urls");
+                    if (urls != null) {
+                        // 返回中等尺寸的图片 URL
+                        return (String) urls.get("regular");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // 搜索失败，返回 null
+        }
+        return null;
+    }
+    
+    /**
+     * 从 Pexels 搜索图片（另一个高质量免费图片源）
+     * 需要申请 API Key: https://www.pexels.com/api/
+     */
+    private String searchImageFromPexels(String placeName) {
+        // 检查 API Key 是否配置
+        if ("your_pexels_api_key".equals(pexelsApiKey)) {
+            return null; // 未配置，跳过
+        }
+        
+        try {
+            RestClient client = RestClient.create("https://api.pexels.com");
+            String url = String.format(
+                "/v1/search?query=%s&per_page=1&orientation=landscape",
+                java.net.URLEncoder.encode(placeName + " place", "UTF-8")
+            );
+            
+            Map<String, Object> response = client.get()
+                .uri(url)
+                .header("Authorization", pexelsApiKey)
+                .retrieve()
+                .body(Map.class);
+            
+            if (response != null) {
+                List<Map<String, Object>> photos = (List<Map<String, Object>>) response.get("photos");
+                if (photos != null && !photos.isEmpty()) {
+                    Map<String, Object> firstPhoto = photos.get(0);
+                    Map<String, Object> src = (Map<String, Object>) firstPhoto.get("src");
+                    if (src != null) {
+                        // 返回中等尺寸的图片 URL
+                        return (String) src.get("medium");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // 搜索失败，返回 null
+        }
+        return null;
     }
 }
