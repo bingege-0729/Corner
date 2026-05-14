@@ -61,7 +61,7 @@ const handleBookmark = async () => {
 <template>
   <div class="detail-page">
     <!-- Hero Image Section -->
-    <div class="hero-section" :style="{ backgroundImage: `url(${place.imageUrl || ''})` }">
+    <div class="hero-section" :style="{ backgroundImage: `url(${place.imageUrl || '/images/default-place.jpg'})` }">
       <div class="header-actions">
         <button class="icon-btn" @click="$emit('back')">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
