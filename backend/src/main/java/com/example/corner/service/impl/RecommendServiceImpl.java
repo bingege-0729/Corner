@@ -1,19 +1,13 @@
 package com.example.corner.service.impl;
 
 import com.example.corner.dto.RecommendRequest;
+
 import com.example.corner.repository.UserPlaceMemoryRepository;
-import com.example.corner.repository.UserMoodRecordRepository;
 import com.example.corner.service.RecommendService;
 import com.example.corner.service.aiService.RecommendAIService;
 import com.example.corner.vo.RecommendResponse;
-import com.example.corner.entity.UserMoodRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 import static com.example.corner.common.RedisConstant.USER_MEMORY_KEY_PREFIX;
 
@@ -26,9 +20,6 @@ public class RecommendServiceImpl implements RecommendService {
     @Autowired
     private RecommendAIService recommendAIService;
 
-    @Autowired
-    private UserMoodRecordRepository userMoodRecordRepository;
-
     /**
      * 核心推荐
      *
@@ -37,20 +28,15 @@ public class RecommendServiceImpl implements RecommendService {
      * @return 响应VO
      */
     @Override
-    @Transactional
     public RecommendResponse recommend(Long userId, RecommendRequest request) {
-        // 1. 记录用户当前的心情标签
-        recordUserMood(userId, request);
-
-        // 2. 调用 AI 推荐（分参数传递，提高工具调用准确率）
-        return recommendAIService.getRecommend(
-                request.getUserInput() != null ? request.getUserInput() : "",
+        String userMessage = String.format(
+                "userId=%d, 用户输入=%s, 纬度=%s, 经度=%s, 用户心情=%s",
                 userId,
+                request.getUserInput() != null ? request.getUserInput() : "",
                 request.getUserLat(),
                 request.getUserLng(),
-                USER_MEMORY_KEY_PREFIX + userId
+                request.getMood() != null ? request.getMood() : ""
         );
-    }
 
         RecommendResponse response = recommendAIService.getRecommend(userMessage, USER_MEMORY_KEY_PREFIX + userId);
 
@@ -69,15 +55,6 @@ public class RecommendServiceImpl implements RecommendService {
             response.setUnderstanding(understanding);
         }
 
-        // 保存心情记录
-        for (String category : categories) {
-            UserMoodRecord record = new UserMoodRecord();
-            record.setUserId(userId);
-            record.setMoodTag(category);
-            record.setEnergyLevel(request.getEnergyLevel());
-            record.setSocialLevel(request.getSocialLevel());
-            record.setCreatedAt(LocalDateTime.now());
-            userMoodRecordRepository.save(record);
-        }
+        return response;
     }
 }
