@@ -165,7 +165,7 @@ public class UserServiceImpl implements UserService {
         Map<String, Integer> moodStats = new HashMap<>();
         moodStats.put("好心情", 0);
         moodStats.put("平静", 0);
-        moodStats.put("伤心", 0);
+        moodStats.put("烦闷时", 0);
         
         // 统计每个情绪的出现次数
         for (UserMoodRecord record : moodRecords) {

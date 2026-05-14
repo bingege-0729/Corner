@@ -102,6 +102,7 @@ const handleSend = async () => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  padding-bottom: 180px; /* 为固定的输入框留出空间 */
 }
 
 .ai-message-card {
@@ -187,13 +188,14 @@ const handleSend = async () => {
 
 /* Chat Input Section Styles */
 .chat-input-section {
-  position: sticky;
-  bottom: 0;
-  margin: 0 -24px -20px -24px;
-  padding: 20px 24px 30px;
-  background: linear-gradient(0deg, var(--bg-main) 70%, rgba(248, 249, 250, 0));
-  backdrop-filter: blur(10px);
-  z-index: 10;
+  position: fixed;
+  bottom: 100px; /* 留出底部导航栏的高度 */
+  left: 0;
+  right: 0;
+  padding: 10px 24px 20px;
+  background: linear-gradient(0deg, var(--bg-main) 80%, rgba(248, 249, 250, 0));
+  backdrop-filter: blur(8px);
+  z-index: 100;
 }
 
 .input-wrapper {

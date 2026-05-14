@@ -1,18 +1,49 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+
+const props = defineProps({
+  tags: {
+    type: Array,
+    default: () => []
+  }
+});
 
 const userInput = ref('');
 const energyLevel = ref(4);
 const socialLevel = ref(7);
 const selectedTags = ref(['想被治愈']); // 改为数组支持多选
 
-const moodTags = [
-  { name: '烦闷', color: '#f2f2f2', top: '10%', left: '5%' },
-  { name: '想被治愈', color: '#eaf2f8', top: '40%', left: '15%' },
-  { name: '枯竭', color: '#f2f2f2', top: '15%', left: '60%' },
-  { name: '需要烟火气', color: '#e8e8e6', top: '70%', left: '10%' },
-  { name: '安静', color: '#ecf0ef', top: '65%', left: '55%' }
+// 预设的位置和颜色，用于将后端标签分布在页面上
+const visualPresets = [
+  { color: '#f2f2f2', top: '10%', left: '5%' },
+  { color: '#eaf2f8', top: '40%', left: '15%' },
+  { color: '#f2f2f2', top: '15%', left: '60%' },
+  { color: '#e8e8e6', top: '70%', left: '10%' },
+  { color: '#ecf0ef', top: '65%', left: '55%' },
+  { color: '#f5f5f5', top: '30%', left: '40%' },
+  { color: '#eaf2f8', top: '10%', left: '30%' }
 ];
+
+// 计算最终要展示的标签及其样式
+const displayTags = computed(() => {
+  if (props.tags && props.tags.length > 0) {
+    return props.tags.map((tag, index) => {
+      const preset = visualPresets[index % visualPresets.length];
+      return {
+        name: tag.tagName,
+        ...preset
+      };
+    });
+  }
+  // 如果后端没数据，回退到默认
+  return [
+    { name: '烦闷', color: '#f2f2f2', top: '10%', left: '5%' },
+    { name: '想被治愈', color: '#eaf2f8', top: '40%', left: '15%' },
+    { name: '枯竭', color: '#f2f2f2', top: '15%', left: '60%' },
+    { name: '需要烟火气', color: '#e8e8e6', top: '70%', left: '10%' },
+    { name: '安静', color: '#ecf0ef', top: '65%', left: '55%' }
+  ];
+});
 
 const toggleTag = (name) => {
   const index = selectedTags.value.indexOf(name);
@@ -56,7 +87,7 @@ const handleRecommend = () => {
     <div class="mood-section">
       <div class="cloud-container">
         <button 
-          v-for="tag in moodTags" 
+          v-for="tag in displayTags" 
           :key="tag.name"
           class="cloud-tag"
           :style="{ 
