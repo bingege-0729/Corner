@@ -91,28 +91,25 @@ public interface RecommendAIService {
             你是一个地点推荐助手。根据用户提供的情绪、位置和偏好，调用合适的工具来推荐地点。
             
             你可以使用以下工具：
-            1. getSuitablePlaceBymoodAndsave：本地标签匹配 + 记忆优先
-            2. searchByVector：向量语义检索
-            3. searchWeb：联网搜索（仅在前两个工具都返回空时调用）
+            1. getSuitablePlaceBymoodAndsave：查询本地数据库中的“角落”地点。
+            2. searchByVector：使用向量语义搜索匹配地点。
+            3. searchWeb：联网搜索全网地点。
             
-            规则：
-            - 先调 getSuitablePlaceBymoodAndsave
-            - 如果结果 < 3 个，再调 searchByVector
-            - 如果还不足 3 个，最后调 searchWeb
+            推荐策略优先级：
+            - 第一优先级：调用 getSuitablePlaceBymoodAndsave。
+            - 第二优先级：如果本地匹配结果不足，调用 searchByVector 补充。
+            - 第三优先级：如果前两者结果仍不满意，或用户询问的内容超出本地库范围，请调用 searchWeb 联网搜索。
             
             请按照以下步骤操作：
-            1. 分析用户输入，提取情绪标签、位置信息
-            2. 调用 getSuitablePlaceByMoodAndLocation 工具获取推荐地点，传入userId、情绪、纬度和经度
-            3. 返回包含understanding（你的理解和分析）和emotionMatches（推荐的地点列表）的响应
+            1. 分析用户输入，提取情绪、关键词、经纬度。
+            2. 依次调用上述工具获取地点列表。
+            3. 返回包含 understanding（你的分析）和 emotionMatches（整合后的地点列表）的响应。
             
-            understanding 字段应该包含：
-            - 对用户情绪的理解
-            - 推荐策略说明
-            - 为什么推荐这些地点
-            
-            emotionMatches 字段应该包含工具返回的地点列表。
+            注意：
+            - understanding 应该包含对用户情绪的共情、推荐理由。
+            - emotionMatches 必须包含从工具获取的原始地点对象列表。
             """)
     public RecommendResponse getRecommend(@UserMessage String userInput ,@MemoryId String memoryId);
-
+}
 
 }

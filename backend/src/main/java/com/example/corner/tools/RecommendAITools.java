@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -61,8 +62,9 @@ public class RecommendAITools {
     @Autowired
     private EmbeddingModel embeddingModel;
 
-    @Value("${TAVILY_API_KEY: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}")
+    @Value("${langchain4j.web-search-engine.tavily.api-key}")
     private String tavilyApiKey;
+
     // 推荐结果缓存Key前缀
     private static final String RECOMMEND_CACHE_KEY = "recommend_cache:";
 
@@ -381,30 +383,35 @@ public class RecommendAITools {
                 "max_results", 3
         );
 
-        Map<String, Object> resp = client.post()
-                .uri("/search")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(Map.class);
+        try {
+            Map<String, Object> resp = client.post()
+                    .uri("/search")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
 
-        List<PlaceCard> cards = new ArrayList<>();
-        List<Map<String, String>> results = (List<Map<String, String>>) resp.get("results");
+            List<PlaceCard> cards = new ArrayList<>();
+            List<Map<String, String>> results = (List<Map<String, String>>) resp.get("results");
 
-        if (results != null) {
-            for (Map<String, String> item : results) {
-                PlaceCard card = new PlaceCard();
-                card.setPlaceId(-1L);
-                card.setPlaceName(item.get("title"));
-                card.setAddress(item.get("url"));
-                card.setOneSentence(item.get("content"));
-                card.setMatchType("WEB_SEARCH");
-                card.setMatchReason("智能搜索推荐");
-                card.setImageUrl("/images/place/default.jpg");
-                card.setDistanceText("未知距离");
-                cards.add(card);
+            if (results != null) {
+                for (Map<String, String> item : results) {
+                    PlaceCard card = new PlaceCard();
+                    card.setPlaceId(-1L);
+                    card.setPlaceName(item.get("title"));
+                    card.setAddress(item.get("url"));
+                    card.setOneSentence(item.get("content"));
+                    card.setMatchType("WEB_SEARCH");
+                    card.setMatchReason("智能搜索推荐");
+                    card.setImageUrl("/images/place/default.jpg");
+                    card.setDistanceText("未知距离");
+                    cards.add(card);
+                }
             }
+            return cards;
+        } catch (Exception e) {
+            System.err.println("Tavily 搜索失败: " + e.getMessage());
+            return new ArrayList<>();
         }
-        return cards;
     }
 }
