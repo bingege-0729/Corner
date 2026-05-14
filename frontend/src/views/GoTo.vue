@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getTravelTips } from '../api/index';
+import { getTravelTips, toggleBookmark } from '../api/index';
 
 const emit = defineEmits(['back', 'save-memory']);
 
@@ -33,6 +33,25 @@ const fetchTips = async () => {
 };
 
 const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.meta.url).href;
+
+const isSaved = ref(false);
+const showToast = ref(false);
+
+const handleSave = async () => {
+  try {
+    const res = await toggleBookmark(props.place.placeId, props.place);
+    if (res.code === 200) {
+      isSaved.value = true;
+      showToast.value = true;
+      setTimeout(() => {
+        showToast.value = false;
+      }, 1500);
+      emit('save-memory');
+    }
+  } catch (err) {
+    console.log('保存失败', err);
+  }
+};
 </script>
 
 <template>
@@ -86,14 +105,14 @@ const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.m
             开始导航
           </button>
           
-          <button class="btn-save" @click="$emit('save-memory')">
+          <button class="btn-save" @click="handleSave" :class="{ 'is-saved': isSaved }">
             <div class="memory-icon-plus">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="18" height="18" viewBox="0 0 24 24" :fill="isSaved ? 'var(--primary-color)' : 'none'" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span class="plus-badge">+</span>
+              <span class="plus-badge" v-if="!isSaved">+</span>
             </div>
-            保存到记忆
+            {{ isSaved ? '已保存到记忆' : '保存到记忆' }}
           </button>
         </div>
 
@@ -102,6 +121,13 @@ const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.m
         </div>
       </div>
     </div>
+
+    <!-- Toast Notification -->
+    <Transition name="toast">
+      <div v-if="showToast" class="toast-container">
+        已存入记忆 ✨
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -303,5 +329,36 @@ const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.m
 
 .btn-later:hover {
   color: var(--text-main);
+}
+
+.btn-save.is-saved {
+  background: #f0f7f4;
+  color: #5a6b63;
+}
+
+/* Toast Styles */
+.toast-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 12px 28px;
+  border-radius: 20px;
+  z-index: 2000;
+  font-size: 0.9rem;
+  backdrop-filter: blur(8px);
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -40%);
 }
 </style>
