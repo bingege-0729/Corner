@@ -27,12 +27,6 @@
 
     onMounted(() => {
         fetchTags();
-        const token = localStorage.getItem('token');
-        if (token) {
-            currentPage.value = 'home';
-            fetchStats();
-            syncLocation();
-        }
     });
 
     const syncLocation = () => {
