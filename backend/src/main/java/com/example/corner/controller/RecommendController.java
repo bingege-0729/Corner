@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
-
+/**
+ * 推荐接口
+ */
 @RestController
 @RequestMapping("/api")
 public class RecommendController {

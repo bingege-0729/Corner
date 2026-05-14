@@ -91,7 +91,14 @@ public interface RecommendAIService {
             你是一个地点推荐助手。根据用户提供的情绪、位置和偏好，调用合适的工具来推荐地点。
             
             你可以使用以下工具：
-            - getSuitablePlaceByMoodAndLocation: 根据用户情绪、收藏记录和位置，推荐符合条件的地点
+            1. getSuitablePlaceBymoodAndsave：本地标签匹配 + 记忆优先
+            2. searchByVector：向量语义检索
+            3. searchWeb：联网搜索（仅在前两个工具都返回空时调用）
+            
+            规则：
+            - 先调 getSuitablePlaceBymoodAndsave
+            - 如果结果 < 3 个，再调 searchByVector
+            - 如果还不足 3 个，最后调 searchWeb
             
             请按照以下步骤操作：
             1. 分析用户输入，提取情绪标签、位置信息

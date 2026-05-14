@@ -14,14 +14,23 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
+import dev.langchain4j.web.search.WebSearchResults;
+import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -51,7 +60,9 @@ public class RecommendAITools {
 
     @Autowired
     private EmbeddingModel embeddingModel;
-    
+
+    @Value("${TAVILY_API_KEY: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}")
+    private String tavilyApiKey;
     // 推荐结果缓存Key前缀
     private static final String RECOMMEND_CACHE_KEY = "recommend_cache:";
 
@@ -353,4 +364,47 @@ public class RecommendAITools {
         return cards.stream().limit(3).collect(Collectors.toList());
     }
 
+
+
+    @Tool("联网搜索地点，在其他工具无法满足用户需求时使用")
+    public List<PlaceCard> searchWeb(
+            @P("搜索关键词") String query,
+            @P("用户纬度") BigDecimal latitude,
+            @P("用户经度") BigDecimal longitude) {
+
+        RestClient client = RestClient.create("https://api.tavily.com");
+
+        Map<String, Object> body = Map.of(
+                "api_key", tavilyApiKey,
+                "query", query + " 深圳 推荐",
+                "search_depth", "basic",
+                "max_results", 3
+        );
+
+        Map<String, Object> resp = client.post()
+                .uri("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(Map.class);
+
+        List<PlaceCard> cards = new ArrayList<>();
+        List<Map<String, String>> results = (List<Map<String, String>>) resp.get("results");
+
+        if (results != null) {
+            for (Map<String, String> item : results) {
+                PlaceCard card = new PlaceCard();
+                card.setPlaceId(-1L);
+                card.setPlaceName(item.get("title"));
+                card.setAddress(item.get("url"));
+                card.setOneSentence(item.get("content"));
+                card.setMatchType("WEB_SEARCH");
+                card.setMatchReason("智能搜索推荐");
+                card.setImageUrl("/images/place/default.jpg");
+                card.setDistanceText("未知距离");
+                cards.add(card);
+            }
+        }
+        return cards;
+    }
 }
