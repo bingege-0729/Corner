@@ -3,12 +3,12 @@ spring:
     name: Corner
   data:
     redis:
-      host: localhost
+      host: 192.168.181.128
       port: 6379
   datasource:
     url: jdbc:mysql://localhost:3306/corner_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
-    password: 123456
+    password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -36,14 +36,14 @@ langchain4j:
       log-responses: true
     streaming-chat-model:
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-      api-key: ${OPENAI_API_KEY}
+      api-key: ${OPENAI_API_KEY:sk-86dca570ca514666af4406c5f8c01c3a}
       model-name: qwen-turbo
       #开启log日志
       log-requests: true
       log-responses: true
     embedding-model:
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-      api-key: ${OPENAI_API_KEY}
+      api-key: ${OPENAI_API_KEY:sk-86dca570ca514666af4406c5f8c01c3a}
       model-name: text-embedding-v3
       dimension: 1024
       #开启log日志
@@ -52,7 +52,7 @@ langchain4j:
       max-segments-per-batch: 10
   community:
     redis:
-      host: localhost
+      host: 192.168.181.128
       port: 6379
 jwt:
   secret: your-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
@@ -67,6 +67,13 @@ baidu:
     api-key: ${BAIDU_MAP_API_KEY:Fj18RcqBdN8w1lbYY7Rs32Kx6pW1Heru}
     geocoding-url: https://api.map.baidu.com/reverse_geocoding/v3/
     ip-location-url: https://api.map.baidu.com/location/ip
+
+# 和风天气API配置
+qweather:
+  api:
+    key: ${QWEATHER_API_KEY:eb98c22d0d3c4b828720b29122156051}
+    weather-url: https://devapi.qweather.com/v7/weather/now
+    geo-api-url: https://geoapi.qweather.com/v2/city/lookup
 
 # 图片搜索 API 配置
 image:
