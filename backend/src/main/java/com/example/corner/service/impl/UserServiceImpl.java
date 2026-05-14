@@ -123,7 +123,7 @@ public class UserServiceImpl implements UserService {
         }
 
         UserInfo user = userInfoRepository.findById(userId).orElseThrow(() -> new RuntimeException("用户不存在"));
-        user.setAvatarUrl("/api/user/avatar/" + fileName);
+        user.setAvatarUrl("/uploads/avatars/" + fileName);
         user.setUpdatedAt(LocalDateTime.now());
         userInfoRepository.save(user);
 
