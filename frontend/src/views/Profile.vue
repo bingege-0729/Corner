@@ -1,3 +1,4 @@
+<script setup>
 import { ref, onMounted } from 'vue';
 import { getUserStats, uploadAvatar } from '../api/index';
 
