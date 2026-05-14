@@ -38,4 +38,14 @@ public interface PlaceService {
     List<Map<String, Object>> getVisitedPlacesWithMood(Long userId);
 
     List<PlaceEmotionLibrary> getAllPlacesWithTags();
+
+    /**
+     * 记录用户探索意向（点击一键出行）
+     */
+    void recordExploration(Long userId, Long placeId, PlaceCard placeCard);
+
+    /**
+     * 获取“发现”页面的地点列表（包含收藏和待探索的）
+     */
+    List<PlaceCard> getDiscoveryPlaces(Long userId);
 }

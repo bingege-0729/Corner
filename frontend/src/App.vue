@@ -90,8 +90,10 @@
 
     const understanding = ref('')
     const emotionMatches = ref([])
+    const isAiLoading = ref(false)
 
     const fetchRecommend = async (params) => {
+        isAiLoading.value = true
         try {
             const res = await getRecommend(params)
             if (res.code === 200) {
@@ -101,6 +103,8 @@
             }
         } catch (err) {
             console.log('获取推荐失败', err)
+        } finally {
+            isAiLoading.value = false
         }
     }
 
@@ -166,13 +170,14 @@
             :understanding="understanding" 
             :places="emotionMatches" 
             @select-place="selectPlace" 
+            @update-results="emotionMatches = $event"
           />
         </div>
         <div v-if="currentPage === 'detail'" class="tab-page">
           <Detail :place="currentPlace" @back="currentPage = previousPage" @go-to="currentPage = 'goto'" />
         </div>
         <div v-if="currentPage === 'goto'" class="tab-page">
-          <GoTo :place="currentPlace" @back="currentPage = 'detail'" @save-memory="currentPage = 'home'; activeTab = 'memory';" />
+          <GoTo :place="currentPlace" @back="currentPage = 'detail'" @save-memory="null" />
         </div>
         <div v-if="currentPage === 'home' && activeTab === 'memory'" class="tab-page">
           <Memory @select-place="selectPlace" />
@@ -184,6 +189,23 @@
 
       <BottomNav v-if="currentPage !== 'goto'" v-model="activeTab" @tab-click="currentPage = 'home'" />
     </template>
+
+    <!-- Global AI Loading Overlay -->
+    <Transition name="fade">
+      <div v-if="isAiLoading" class="ai-loading-overlay">
+        <div class="loading-content">
+          <div class="ai-sphere">
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="ring"></div>
+          </div>
+          <div class="loading-text">
+            <h3>Corner AI 正在思考</h3>
+            <p class="status-msg">正在全网为你搜寻最安静的角落...</p>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -206,5 +228,77 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* AI Loading Overlay Styles */
+.ai-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-content {
+  text-align: center;
+}
+
+.ai-sphere {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 30px;
+}
+
+.ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--primary-color);
+  border-radius: 50%;
+  opacity: 0;
+  animation: pulse 2s infinite;
+}
+
+.ring:nth-child(2) { animation-delay: 0.6s; }
+.ring:nth-child(3) { animation-delay: 1.2s; }
+
+@keyframes pulse {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.loading-text h3 {
+  font-size: 1.4rem;
+  color: var(--text-main);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.status-msg {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  animation: breathe 2s infinite ease-in-out;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>

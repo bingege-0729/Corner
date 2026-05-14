@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getTravelTips } from '../api/index';
+import { getTravelTips, toggleBookmark, recordExploration } from '../api/index';
 
 const emit = defineEmits(['back', 'save-memory']);
 
@@ -33,6 +33,53 @@ const fetchTips = async () => {
 };
 
 const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.meta.url).href;
+
+const isSaved = ref(false);
+const showToast = ref(false);
+const showMapMenu = ref(false);
+
+const handleSave = async () => {
+  try {
+    const res = await toggleBookmark(props.place.placeId, props.place);
+    if (res.code === 200) {
+      isSaved.value = true;
+      showToast.value = true;
+      setTimeout(() => {
+        showToast.value = false;
+      }, 1500);
+      emit('save-memory');
+    }
+  } catch (err) {
+    console.log('保存失败', err);
+  }
+};
+
+const handleNavigate = async (type) => {
+  const { latitude, longitude, placeName } = props.place;
+  
+  // 记录到“发现的角落”
+  try {
+    await recordExploration(props.place);
+  } catch (err) {
+    console.log('记录探索失败', err);
+  }
+
+  let url = '';
+  
+  if (type === 'amap') {
+    // 高德地图协议
+    url = `amapuri://route/plan/?did=&dlat=${latitude}&dlon=${longitude}&dname=${placeName}&dev=0&t=0`;
+  } else if (type === 'baidu') {
+    // 百度地图协议
+    url = `baidumap://map/direction?destination=latlng:${latitude},${longitude}|name:${placeName}&mode=driving`;
+  } else if (type === 'apple') {
+    // 苹果地图协议
+    url = `http://maps.apple.com/?daddr=${latitude},${longitude}&dirflg=d`;
+  }
+  
+  window.location.href = url;
+  showMapMenu.value = false;
+};
 </script>
 
 <template>
@@ -79,27 +126,45 @@ const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.m
 
         <!-- Buttons -->
         <div class="actions">
-          <button class="btn-nav">
+          <button class="btn-nav" @click="showMapMenu = true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 11L22 2L13 21L11 13L3 11Z" fill="currentColor"/>
             </svg>
             开始导航
           </button>
           
-          <button class="btn-save" @click="$emit('save-memory')">
+          <button class="btn-save" @click="handleSave" :class="{ 'is-saved': isSaved }">
             <div class="memory-icon-plus">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="18" height="18" viewBox="0 0 24 24" :fill="isSaved ? 'var(--primary-color)' : 'none'" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span class="plus-badge">+</span>
+              <span class="plus-badge" v-if="!isSaved">+</span>
             </div>
-            保存到记忆
+            {{ isSaved ? '已保存到记忆' : '保存到记忆' }}
           </button>
         </div>
 
         <div class="footer-action">
           <button class="btn-later" @click="$emit('back')">稍后再去</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <Transition name="toast">
+      <div v-if="showToast" class="toast-container">
+        已存入记忆 ✨
+      </div>
+    </Transition>
+
+    <!-- Map Selection Menu -->
+    <div v-if="showMapMenu" class="map-menu-overlay" @click="showMapMenu = false">
+      <div class="map-menu-content" @click.stop>
+        <div class="menu-header">选择导航地图</div>
+        <button class="menu-btn" @click="handleNavigate('amap')">高德地图</button>
+        <button class="menu-btn" @click="handleNavigate('baidu')">百度地图</button>
+        <button class="menu-btn" @click="handleNavigate('apple')">苹果地图</button>
+        <button class="menu-btn cancel" @click="showMapMenu = false">取消</button>
       </div>
     </div>
   </div>
@@ -303,5 +368,94 @@ const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.m
 
 .btn-later:hover {
   color: var(--text-main);
+}
+
+.btn-save.is-saved {
+  background: #f0f7f4;
+  color: #5a6b63;
+}
+
+/* Toast Styles */
+.toast-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 12px 28px;
+  border-radius: 20px;
+  z-index: 2000;
+  font-size: 0.9rem;
+  backdrop-filter: blur(8px);
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -40%);
+}
+
+/* Map Menu Styles */
+.map-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 3000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.map-menu-content {
+  width: 100%;
+  background: white;
+  border-radius: 32px 32px 0 0;
+  padding: 24px;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.menu-header {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.menu-btn {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  background: #f8f9fa;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.menu-btn:active {
+  background: #eee;
+}
+
+.menu-btn.cancel {
+  background: white;
+  color: #ff4757;
+  margin-top: 8px;
+  margin-bottom: 0;
 }
 </style>

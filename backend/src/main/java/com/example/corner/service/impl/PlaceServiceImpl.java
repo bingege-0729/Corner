@@ -529,4 +529,102 @@ public class PlaceServiceImpl implements PlaceService {
     public List<PlaceEmotionLibrary> getAllPlacesWithTags() {
         return placeEmotionLibraryRepository.findAll();
     }
+
+    @Override
+    public void recordExploration(Long userId, Long placeId, PlaceCard placeCard) {
+        Long targetPlaceId = placeId;
+
+        // 1. 如果是外部地点（placeId = -1），先持久化
+        if (placeId == -1L && placeCard != null) {
+            // 检查是否已经存在同名地点
+            Optional<PlaceEmotionLibrary> existing = placeEmotionLibraryRepository
+                    .findAll().stream()
+                    .filter(p -> p.getPlaceName().equals(placeCard.getPlaceName()))
+                    .findFirst();
+
+            if (existing.isPresent()) {
+                targetPlaceId = existing.get().getId();
+            } else {
+                PlaceEmotionLibrary newPlace = new PlaceEmotionLibrary();
+                newPlace.setPlaceName(placeCard.getPlaceName());
+                newPlace.setAddress(placeCard.getAddress());
+                newPlace.setOneSentence(placeCard.getOneSentence());
+                newPlace.setImageUrl(placeCard.getImageUrl());
+                newPlace.setCrowdLevel(placeCard.getCrowdLevel());
+                newPlace.setLatitude(placeCard.getLatitude());
+                newPlace.setLongitude(placeCard.getLongitude());
+                newPlace.setTips("来自AI推荐的外部地点");
+                newPlace = placeEmotionLibraryRepository.save(newPlace);
+                targetPlaceId = newPlace.getId();
+            }
+        }
+
+        // 2. 检查记录是否存在
+        Optional<UserPlaceMemory> memoryOpt = userPlaceMemoryRepository
+                .findByUserIdAndPlaceId(userId, targetPlaceId);
+
+        if (memoryOpt.isPresent()) {
+            UserPlaceMemory memory = memoryOpt.get();
+            // 如果已经是收藏状态，不需要改变为探索状态
+            if (!"BOOKMARKED".equals(memory.getInteractionType())) {
+                memory.setInteractionType("EXPLORING");
+                memory.setUpdatedAt(LocalDateTime.now());
+                userPlaceMemoryRepository.save(memory);
+            }
+        } else {
+            UserPlaceMemory memory = new UserPlaceMemory();
+            memory.setUserId(userId);
+            memory.setPlaceId(targetPlaceId);
+            memory.setInteractionType("EXPLORING");
+            memory.setVisitedAt(LocalDate.now());
+            memory.setCreatedAt(LocalDateTime.now());
+            memory.setUpdatedAt(LocalDateTime.now());
+            userPlaceMemoryRepository.save(memory);
+        }
+    }
+
+    @Override
+    public List<PlaceCard> getDiscoveryPlaces(Long userId) {
+        // 1. 查询所有与用户有交互的地点（排除 VISITED，因为那是已经去过的）
+        List<UserPlaceMemory> memories = userPlaceMemoryRepository.findByUserId(userId);
+        
+        return memories.stream()
+                .filter(m -> "BOOKMARKED".equals(m.getInteractionType()) || "EXPLORING".equals(m.getInteractionType()))
+                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt())) // 按时间倒序
+                .map(m -> {
+                    Optional<PlaceEmotionLibrary> placeOpt = placeEmotionLibraryRepository.findById(m.getPlaceId());
+                    if (placeOpt.isEmpty()) return null;
+                    
+                    PlaceEmotionLibrary place = placeOpt.get();
+                    PlaceCard card = new PlaceCard();
+                    card.setPlaceId(place.getId());
+                    card.setPlaceName(place.getPlaceName());
+                    card.setAddress(place.getAddress());
+                    card.setImageUrl(place.getImageUrl());
+                    card.setOneSentence(place.getOneSentence());
+                    card.setCrowdLevel(place.getCrowdLevel());
+                    card.setLatitude(place.getLatitude());
+                    card.setLongitude(place.getLongitude());
+                    
+                    // 设置状态文字
+                    if ("BOOKMARKED".equals(m.getInteractionType())) {
+                        card.setStatus("记忆中");
+                    } else {
+                        card.setStatus("待物探");
+                    }
+                    
+                    // 补充标签
+                    List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(place.getId());
+                    List<String> moodTags = relations.stream()
+                            .map(r -> emotionTagDictRepository.findById(r.getTagId()))
+                            .filter(Optional::isPresent)
+                            .map(opt -> opt.get().getTagName())
+                            .collect(Collectors.toList());
+                    card.setMoodTags(moodTags);
+                    
+                    return card;
+                })
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+    }
 }
