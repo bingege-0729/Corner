@@ -172,7 +172,7 @@
           <Detail :place="currentPlace" @back="currentPage = previousPage" @go-to="currentPage = 'goto'" />
         </div>
         <div v-if="currentPage === 'goto'" class="tab-page">
-          <GoTo :place="currentPlace" @back="currentPage = 'detail'" @save-memory="currentPage = 'home'; activeTab = 'memory';" />
+          <GoTo :place="currentPlace" @back="currentPage = 'detail'" @save-memory="null" />
         </div>
         <div v-if="currentPage === 'home' && activeTab === 'memory'" class="tab-page">
           <Memory @select-place="selectPlace" />

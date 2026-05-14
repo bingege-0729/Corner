@@ -68,9 +68,9 @@ const handleAvatarUpload = async (event) => {
   try {
     const res = await uploadAvatar(formData);
     if (res.code === 200) {
-      // 这里的 res.data 应该是后端返回的新头像 URL
-      // 注意：如果是相对路径，需要拼上 baseURL
-      const newUrl = res.data.startsWith('http') ? res.data : `http://localhost:8080${res.data}`;
+      // 修复点：后端返回的是 AvatarResponse 对象，URL 字段名是 avatarUrl
+      const rawUrl = res.data.avatarUrl;
+      const newUrl = rawUrl.startsWith('http') ? rawUrl : `http://localhost:8080${rawUrl}`;
       avatarUrl.value = newUrl;
     }
   } catch (err) {
