@@ -288,7 +288,15 @@ public class RecommendAITools {
         card.setAddress(place.getAddress());
         card.setCrowdLevel(place.getCrowdLevel());
         card.setOneSentence(place.getOneSentence());
-        card.setImageUrl(place.getImageUrl());
+        
+        // 确保图片不为空，如果数据库中没有则使用 Picsum 随机图
+        String imageUrl = place.getImageUrl();
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            int seed = Math.abs(place.getPlaceName().hashCode());
+            imageUrl = String.format("https://picsum.photos/seed/%d/400/300", seed);
+        }
+        card.setImageUrl(imageUrl);
+        
         card.setDistanceText(String.format("距你%.1f公里", distance));
         card.setMatchReason("符合你的" + mood + "心情");
         return card;
@@ -381,7 +389,6 @@ public class RecommendAITools {
             @P("用户纬度") BigDecimal latitude,
             @P("用户经度") BigDecimal longitude) {
 
-        System.out.println("AI 正在触发联网搜索，关键词: " + query);
         org.springframework.web.client.RestClient client = org.springframework.web.client.RestClient.create("https://api.tavily.com");
 
         // 构建搜索查询，确保包含地理位置信息
@@ -431,9 +438,15 @@ public class RecommendAITools {
                 String imageUrl = extractImageUrl(item, title);
                 card.setImageUrl(imageUrl);
                 
-                // 尝试通过百度地图 Geocoding 获取距离（使用地点名称而非 URL）
-                String distanceText = calculateDistanceFromAddress(item.get("title"), latitude, longitude);
-                card.setDistanceText(distanceText);
+                // 尝试通过百度地图 Geocoding 获取距离和坐标
+                GeocodingResult geoResult = geocodePlace(item.get("title"));
+                if (geoResult != null) {
+                    card.setDistanceText(geoResult.distanceText);
+                    card.setLatitude(geoResult.latitude);
+                    card.setLongitude(geoResult.longitude);
+                } else {
+                    card.setDistanceText("距离需自行确认");
+                }
                 
                 // 联网查询地点注意事项
                 String tips = searchPlaceTips(item.get("title"), url);
@@ -449,11 +462,26 @@ public class RecommendAITools {
     }
     
     /**
-     * 通过百度地图 Geocoding API 计算距离
+     * Geocoding 结果类
      */
-    private String calculateDistanceFromAddress(String placeName, BigDecimal userLat, BigDecimal userLng) {
-        if (userLat == null || userLng == null || placeName == null || placeName.isEmpty()) {
-            return "距离需自行确认";
+    private static class GeocodingResult {
+        String distanceText;
+        BigDecimal latitude;
+        BigDecimal longitude;
+        
+        GeocodingResult(String distanceText, BigDecimal latitude, BigDecimal longitude) {
+            this.distanceText = distanceText;
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+    }
+    
+    /**
+     * 通过百度地图 Geocoding API 获取地点坐标和距离
+     */
+    private GeocodingResult geocodePlace(String placeName) {
+        if (placeName == null || placeName.isEmpty()) {
+            return null;
         }
         
         try {
@@ -478,31 +506,20 @@ public class RecommendAITools {
                     double lat = ((Number) location.get("lat")).doubleValue();
                     double lng = ((Number) location.get("lng")).doubleValue();
                     
-                    // 使用 Haversine 公式计算距离
-                    double distance = calculateDistance(
-                        userLat.doubleValue(), userLng.doubleValue(),
-                        lat, lng
+                    return new GeocodingResult(
+                        "距你需计算",  // 距离会在 Service 层计算
+                        BigDecimal.valueOf(lat),
+                        BigDecimal.valueOf(lng)
                     );
-                    
-                    // 格式化距离显示
-                    if (distance < 1.0) {
-                        return String.format("距你%d米", (int)(distance * 1000));
-                    } else if (distance <= 5.0) {
-                        return String.format("距你%.1f公里", distance);
-                    } else {
-                        return String.format("距你%.1f公里（较远）", distance);
-                    }
                 }
             } else {
-                // Geocoding 失败，记录状态码
-                System.err.println("百度地图 Geocoding 失败，状态码: " + response.get("status"));
+                // Geocoding 失败，静默处理
             }
         } catch (Exception e) {
-            // Geocoding 异常，返回默认提示
-            System.err.println("百度地图 Geocoding 异常: " + e.getMessage());
+            // Geocoding 异常，静默处理
         }
         
-        return "距离需自行确认";
+        return null;
     }
     
     /**
@@ -616,7 +633,8 @@ public class RecommendAITools {
     
     /**
      * 从多个来源提取地点图片 URL
-     * 优先级：Tavily > Unsplash > Pexels > 默认图片
+     * 优先级：Tavily > Unsplash > Pexels > Picsum 随机图
+     * 保证每个地点都有图片返回
      */
     private String extractImageUrl(Map<String, String> item, String placeName) {
         // 1. 尝试从 Tavily 结果中获取 img_src（最稳定）
@@ -643,8 +661,23 @@ public class RecommendAITools {
             return imageUrl;
         }
         
-        // 5. 兜底：使用默认图片
-        return "/images/place/default.jpg";
+        // 5. 使用 Picsum Photos 生成稳定的随机图片（保证有图片）
+        return generateFallbackImage(placeName);
+    }
+    
+    /**
+     * 生成兜底图片（使用 Picsum Photos）
+     * 保证每个地点都有图片返回
+     */
+    private String generateFallbackImage(String placeName) {
+        try {
+            // 使用地点名称的 hashCode 作为种子，确保同一地点总是返回相同图片
+            int seed = Math.abs(placeName.hashCode());
+            return String.format("https://picsum.photos/seed/%d/400/300", seed);
+        } catch (Exception e) {
+            // 极端情况下，返回一个固定的默认图片 URL
+            return "https://via.placeholder.com/400x300/4A90E2/FFFFFF?text=地点图片";
+        }
     }
     
     /**
@@ -690,9 +723,7 @@ public class RecommendAITools {
                     Map<String, Object> firstResult = results.get(0);
                     Map<String, Object> urls = (Map<String, Object>) firstResult.get("urls");
                     if (urls != null) {
-                        String imageUrl = (String) urls.get("regular");
-                        System.out.println("✅ Unsplash 找到图片: " + imageUrl);
-                        return imageUrl;
+                        return (String) urls.get("regular");
                     }
                 }
             }
@@ -731,9 +762,7 @@ public class RecommendAITools {
                     Map<String, Object> firstPhoto = photos.get(0);
                     Map<String, Object> src = (Map<String, Object>) firstPhoto.get("src");
                     if (src != null) {
-                        String imageUrl = (String) src.get("medium");
-                        System.out.println("✅ Pexels 找到图片: " + imageUrl);
-                        return imageUrl;
+                        return (String) src.get("medium");
                     }
                 }
             }
