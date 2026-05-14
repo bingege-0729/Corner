@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+/**
+ * 标签接口
+ */
 @RestController
 @RequestMapping("/api")
 public class TagController {
