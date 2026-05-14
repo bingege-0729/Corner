@@ -19,7 +19,7 @@ const fetchStats = async () => {
   loading.value = true;
   try {
     const res = await getUserStats();
-    if (res.code === 0) {
+    if (res.code === 200) {
       stats.value.discovered = res.data.visitedPlacesCount;
       stats.value.moods = res.data.moodStats || {};
     }

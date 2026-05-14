@@ -14,7 +14,7 @@ const fetchMemories = async () => {
   loading.value = true;
   try {
     const res = await getBookmarks();
-    if (res.code === 0) {
+    if (res.code === 200) {
       memories.value = res.data;
     }
   } catch (err) {

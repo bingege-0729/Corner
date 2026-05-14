@@ -40,7 +40,7 @@
     const getLogin=async(phoneNum)=>{
         try {
             const res = await login({ phone: phoneNum });
-            if (res.code === 0) {
+            if (res.code === 200) {
                 user_info.value = res.data;
                 localStorage.setItem('token', res.data.token);
                 currentPage.value = 'home';
@@ -80,7 +80,7 @@
     const fetchTags=async()=>{
         try{
             const res=await getTags()
-            if(res.code===0){
+            if(res.code===200){
                 tagList.value=res.data.tags
             }
         }catch(err){
@@ -94,7 +94,7 @@
     const fetchRecommend = async (params) => {
         try {
             const res = await getRecommend(params)
-            if (res.code === 0) {
+            if (res.code === 200) {
                 understanding.value = res.data.understanding
                 emotionMatches.value = res.data.emotionMatches
                 currentPage.value = 'result'
@@ -107,7 +107,7 @@
     const togglePlaceBookmark = async (placeId) => {
         try {
             const res = await toggleBookmark(placeId)
-            if (res.code === 0) {
+            if (res.code === 200) {
                 console.log('收藏状态切换成功')
             }
         } catch (err) {
@@ -119,7 +119,7 @@
     const fetchBookmarks = async () => {
         try {
             const res = await getBookmarks()
-            if (res.code === 0) {
+            if (res.code === 200) {
                 bookmarkList.value = res.data
             }
         } catch (err) {
@@ -131,7 +131,7 @@
     const fetchPlaceDetail = async (placeId) => {
         try {
             const res = await getPlaceDetail(placeId)
-            if (res.code === 0) {
+            if (res.code === 200) {
                 placeDetailData.value = res.data
                 currentPlace.value = res.data // 更新为详细数据
             }
