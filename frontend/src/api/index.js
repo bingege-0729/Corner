@@ -4,6 +4,9 @@ import axios from '@/axios'
 export const login = (params) => axios.post('/user/login', params)
 export const logout = () => axios.post('/user/logout')
 export const getUserStats = () => axios.get('/user/stats')
+export const uploadAvatar = (formData) => axios.post('/user/upload-avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+})
 
 // Tags
 export const getTags = () => axios.get('/tags')
@@ -17,7 +20,7 @@ export const getPlaceDetail = (placeId) => axios.get(`/place/detail/${placeId}`)
 export const getTravelTips = (placeId) => axios.post(`/place/${placeId}/travel-tips`)
 
 // Memory / Bookmarks
-export const toggleBookmark = (placeId) => axios.post(`/memory/${placeId}/bookmark`)
+export const toggleBookmark = (placeId, data) => axios.post(`/memory/${placeId}/bookmark`, data)
 export const getBookmarks = () => axios.get('/memory/bookmarks')
 export const getVisitedWithMood = () => axios.get('/memory/visited-with-mood')
 

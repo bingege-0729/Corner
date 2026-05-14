@@ -46,10 +46,20 @@ const handleSend = async () => {
       <p>{{ understanding || '正在为你寻找最适合的角落...' }}</p>
     </div>
 
-    <!-- Section Title -->
-    <div class="section-header">
-      <h3 class="section-title">记忆匹配 (根据你的记忆)</h3>
-    </div>
+    <!-- AI Web Search Results Header -->
+    <h2 class="section-title" v-if="places.some(p => p.matchType === 'WEB_SEARCH')">
+      全网发现 <span>(AI 实时搜索)</span>
+    </h2>
+
+    <!-- Memory Match Header -->
+    <h2 class="section-title" v-if="places.some(p => p.matchType === 'memory_match')">
+      记忆匹配 <span>(根据你的记忆)</span>
+    </h2>
+
+    <!-- Emotion Match Header -->
+    <h2 class="section-title" v-if="places.some(p => p.matchType === 'emotion_match')">
+      情绪匹配 <span>(符合当前心情)</span>
+    </h2>
 
     <!-- Results List -->
     <div class="results-list">

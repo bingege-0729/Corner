@@ -147,6 +147,13 @@ public class UserServiceImpl implements UserService {
     public UserStatsResponse getUserStats(Long userId) {
         UserStatsResponse stats = new UserStatsResponse();
         
+        // 0. 获取用户信息
+        UserInfo user = userInfoRepository.findById(userId).orElse(null);
+        if (user != null) {
+            stats.setNickname(user.getNickname());
+            stats.setAvatarUrl(user.getAvatarUrl());
+        }
+        
         // 1. 统计去过的不同地点数量（interaction_type = 'VISITED'）
         List<UserPlaceMemory> visitedMemories = userPlaceMemoryRepository
                 .findByUserIdAndInteractionType(userId, "VISITED");
