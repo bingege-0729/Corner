@@ -4,7 +4,7 @@ import axios from '@/axios'
 export const login = (params) => axios.post('/user/login', params)
 export const logout = () => axios.post('/user/logout')
 export const getUserStats = () => axios.get('/user/stats')
-export const uploadAvatar = (formData) => axios.post('/user/upload-avatar', formData, {
+export const uploadAvatar = (formData) => axios.post('/user/avatar/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
 })
 
