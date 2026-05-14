@@ -406,6 +406,8 @@ public class RecommendAITools {
                     card.setMatchReason("智能搜索推荐");
                     card.setImageUrl("/images/place/default.jpg");
                     card.setDistanceText("未知距离");
+                    card.setLatitude(latitude);
+                    card.setLongitude(longitude);
                     cards.add(card);
                 }
             }
