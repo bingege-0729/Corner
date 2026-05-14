@@ -223,9 +223,9 @@ public class PlaceServiceImpl implements PlaceService {
                 newPlace.setOneSentence(placeCard.getOneSentence());
                 newPlace.setImageUrl(placeCard.getImageUrl());
                 newPlace.setCrowdLevel(placeCard.getCrowdLevel());
+                newPlace.setLatitude(placeCard.getLatitude());
+                newPlace.setLongitude(placeCard.getLongitude());
                 newPlace.setTips("来自AI推荐的外部地点");
-                newPlace.setCreatedAt(LocalDateTime.now());
-                newPlace.setUpdatedAt(LocalDateTime.now());
                 // 保存并获取真实ID
                 newPlace = placeEmotionLibraryRepository.save(newPlace);
                 targetPlaceId = newPlace.getId();
