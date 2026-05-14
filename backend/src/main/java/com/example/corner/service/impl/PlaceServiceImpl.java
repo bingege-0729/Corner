@@ -15,9 +15,13 @@ import com.example.corner.vo.PlaceCard;
 import com.example.corner.vo.PlaceDetailResponse;
 import com.example.corner.vo.TravelTipCard;
 import com.example.corner.vo.UserHistory;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,6 +45,18 @@ public class PlaceServiceImpl implements PlaceService {
     
     @Autowired
     private UserInfoRepository userInfoRepository;
+    
+    @Value("${qweather.api.key}")
+    private String qWeatherApiKey;
+    
+    @Value("${qweather.api.weather-url}")
+    private String qWeatherUrl;
+    
+    @Value("${qweather.api.geo-api-url}")
+    private String qGeoApiUrl;
+    
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
     
     /**
      * 地点详情
@@ -134,8 +150,8 @@ public class PlaceServiceImpl implements PlaceService {
         tipCard.setAddress(place.getAddress());
         tipCard.setDistanceText(distanceText);
         
-        // 5. 生成天气提示（简化版，实际可接入天气API）
-        tipCard.setWeatherTip(generateWeatherTip());
+        // 5. 生成天气提示（调用和风天气API）
+        tipCard.setWeatherTip(generateWeatherTip(user));
         
         // 6. 生成准备事项提示
         tipCard.setPreparationTip(generatePreparationTip(place.getTips()));
@@ -147,11 +163,158 @@ public class PlaceServiceImpl implements PlaceService {
     }
     
     /**
-     * 生成天气提示
+     * 生成天气提示（调用和风天气API）
      */
-    private String generateWeatherTip() {
-        // TODO: 接入实时天气API
-        return "建议出发前查看天气预报，做好相应准备 ☀️";
+    private String generateWeatherTip(UserInfo user) {
+        try {
+            // 获取用户所在城市
+            String city = null;
+            if (user.getLatitude() != null && user.getLongitude() != null) {
+                // 通过经纬度获取城市名称
+                city = getCityByLocation(user.getLatitude().doubleValue(), user.getLongitude().doubleValue());
+            }
+            
+            // 如果无法获取城市，返回默认提示
+            if (city == null || city.isEmpty()) {
+                return "建议出发前查看天气预报，做好相应准备 ☀️";
+            }
+            
+            // 调用和风天气API获取实时天气
+            Map<String, Object> weatherInfo = getWeatherByCity(city);
+            
+            if (Boolean.TRUE.equals(weatherInfo.get("success"))) {
+                String weather = (String) weatherInfo.get("weather");
+                String temperature = (String) weatherInfo.get("temperature");
+                String windDir = (String) weatherInfo.get("windDir");
+                String windScale = (String) weatherInfo.get("windScale");
+                
+                // 构建天气提示
+                StringBuilder tip = new StringBuilder();
+                tip.append(String.format("%s今天%s，气温%s°C，%s%s级。", city, weather, temperature, windDir, windScale));
+                
+                // 根据天气给出建议
+                if (weather.contains("雨")) {
+                    tip.append("记得带伞哦 ☔");
+                } else if (weather.contains("雪")) {
+                    tip.append("注意保暖防滑 ❄️");
+                } else if (weather.contains("晴")) {
+                    tip.append("适合出行，注意防晒 ☀️");
+                } else if (weather.contains("云")) {
+                    tip.append("天气舒适，愉快出行吧 🌤️");
+                } else if (weather.contains("雷")) {
+                    tip.append("雷雨天气，注意安全 ⚡");
+                } else if (weather.contains("雾")) {
+                    tip.append("能见度较低，小心慢行 🌫️");
+                } else {
+                    tip.append("祝您旅途愉快 🌟");
+                }
+                
+                return tip.toString();
+            } else {
+                // API调用失败，返回默认提示
+                return "建议出发前查看天气预报，做好相应准备 ☀️";
+            }
+        } catch (Exception e) {
+            // 异常情况下返回默认提示
+            return "建议出发前查看天气预报，做好相应准备 ☀️";
+        }
+    }
+    
+    /**
+     * 根据经纬度获取城市名称
+     */
+    private String getCityByLocation(double latitude, double longitude) {
+        try {
+            String url = String.format("%s?key=%s&location=%s,%s",
+                    qGeoApiUrl, qWeatherApiKey, longitude, latitude);
+            
+            String response = restTemplate.getForObject(url, String.class);
+            JsonNode rootNode = objectMapper.readTree(response);
+            
+            String code = rootNode.get("code").asText();
+            if ("200".equals(code)) {
+                JsonNode locationNode = rootNode.get("location");
+                if (locationNode != null && locationNode.isArray() && locationNode.size() > 0) {
+                    return locationNode.get(0).get("name").asText();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    /**
+     * 根据城市名称获取天气信息
+     */
+    private Map<String, Object> getWeatherByCity(String city) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // 1. 先获取城市ID
+            String locationId = getLocationId(city);
+            if (locationId == null) {
+                result.put("success", false);
+                result.put("error", "未找到城市: " + city);
+                return result;
+            }
+            
+            // 2. 根据城市ID获取天气
+            String url = String.format("%s?key=%s&location=%s",
+                    qWeatherUrl, qWeatherApiKey, locationId);
+            
+            String response = restTemplate.getForObject(url, String.class);
+            JsonNode rootNode = objectMapper.readTree(response);
+            
+            String code = rootNode.get("code").asText();
+            if ("200".equals(code)) {
+                JsonNode nowNode = rootNode.get("now");
+                
+                String temp = nowNode.get("temp").asText();           // 温度
+                String text = nowNode.get("text").asText();           // 天气状况
+                String windDir = nowNode.get("windDir").asText();     // 风向
+                String windScale = nowNode.get("windScale").asText(); // 风力等级
+                
+                result.put("success", true);
+                result.put("city", city);
+                result.put("temperature", temp);
+                result.put("weather", text);
+                result.put("windDir", windDir);
+                result.put("windScale", windScale);
+            } else {
+                result.put("success", false);
+                result.put("error", "天气API返回错误码: " + code);
+            }
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", "解析天气数据失败: " + e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 根据城市名称获取Location ID
+     */
+    private String getLocationId(String city) {
+        try {
+            String url = String.format("%s?key=%s&location=%s",
+                    qGeoApiUrl, qWeatherApiKey, city);
+            
+            String response = restTemplate.getForObject(url, String.class);
+            JsonNode rootNode = objectMapper.readTree(response);
+            
+            String code = rootNode.get("code").asText();
+            if ("200".equals(code)) {
+                JsonNode locationNode = rootNode.get("location");
+                if (locationNode != null && locationNode.isArray() && locationNode.size() > 0) {
+                    return locationNode.get(0).get("id").asText();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
     
     /**
