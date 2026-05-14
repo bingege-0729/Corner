@@ -68,3 +68,10 @@ baidu:
     geocoding-url: https://api.map.baidu.com/reverse_geocoding/v3/
     ip-location-url: https://api.map.baidu.com/location/ip
 
+# 图片搜索 API 配置
+image:
+  unsplash:
+    access-key: ${UNSPLASH_ACCESS_KEY:your_unsplash_access_key} # Unsplash API Key
+  pexels:
+    api-key: ${PEXELS_API_KEY:your_pexels_api_key} # Pexels API Key
+

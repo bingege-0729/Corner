@@ -1,5 +1,6 @@
 package com.example.corner.service.aiService;
 
+import com.example.corner.entity.UserPlaceMemory;
 import com.example.corner.vo.RecommendResponse;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -8,6 +9,7 @@ import dev.langchain4j.service.spring.AiService;
 import reactor.core.publisher.Flux;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @AiService(
         chatModel = "openAiChatModel",
