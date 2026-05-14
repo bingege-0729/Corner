@@ -445,6 +445,7 @@ public class RecommendAITools {
             // LLM 后处理：生成个性化推荐理由
             cards = enhanceWithLLM(cards, query, latitude, longitude);
         }
+        return cards;
     }
     
     /**
@@ -615,7 +616,7 @@ public class RecommendAITools {
     
     /**
      * 从多个来源提取地点图片 URL
-     * 优先级：Tavily > Unsplash > Pexels > 百度图片 > 默认图片
+     * 优先级：Tavily > Unsplash > Pexels > 默认图片
      */
     private String extractImageUrl(Map<String, String> item, String placeName) {
         // 1. 尝试从 Tavily 结果中获取 img_src（最稳定）
@@ -642,13 +643,7 @@ public class RecommendAITools {
             return imageUrl;
         }
         
-        // 5. 使用百度搜索图片 API
-        imageUrl = searchImageFromBaidu(placeName);
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            return imageUrl;
-        }
-        
-        // 6. 兜底：使用默认图片
+        // 5. 兜底：使用默认图片
         return "/images/place/default.jpg";
     }
     
@@ -662,40 +657,6 @@ public class RecommendAITools {
             return null;
         } catch (Exception e) {
             // 提取失败，返回 null
-        }
-        return null;
-    }
-    
-    /**
-     * 从百度搜索图片（简化实现）
-     * 生产环境建议使用专门的图片搜索 API
-     */
-    private String searchImageFromBaidu(String placeName) {
-        try {
-            // 使用百度图片搜索 API
-            RestClient client = RestClient.create("https://image.baidu.com");
-            String url = String.format(
-                "/search/acjson?tn=resultjson_com&ipn=rj&ct=201326592&word=%s",
-                java.net.URLEncoder.encode(placeName + " 地点", "UTF-8")
-            );
-            
-            Map<String, Object> response = client.get()
-                .uri(url)
-                .retrieve()
-                .body(Map.class);
-            
-            if (response != null) {
-                List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
-                if (data != null && !data.isEmpty()) {
-                    Map<String, Object> firstImage = data.get(0);
-                    String thumbURL = (String) firstImage.get("thumbURL");
-                    if (thumbURL != null && !thumbURL.isEmpty()) {
-                        return thumbURL;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // 搜索失败，返回 null
         }
         return null;
     }
@@ -729,13 +690,14 @@ public class RecommendAITools {
                     Map<String, Object> firstResult = results.get(0);
                     Map<String, Object> urls = (Map<String, Object>) firstResult.get("urls");
                     if (urls != null) {
-                        // 返回中等尺寸的图片 URL
-                        return (String) urls.get("regular");
+                        String imageUrl = (String) urls.get("regular");
+                        System.out.println("✅ Unsplash 找到图片: " + imageUrl);
+                        return imageUrl;
                     }
                 }
             }
         } catch (Exception e) {
-            // 搜索失败，返回 null
+            System.err.println("❌ Unsplash 搜索失败: " + e.getMessage());
         }
         return null;
     }
@@ -769,13 +731,14 @@ public class RecommendAITools {
                     Map<String, Object> firstPhoto = photos.get(0);
                     Map<String, Object> src = (Map<String, Object>) firstPhoto.get("src");
                     if (src != null) {
-                        // 返回中等尺寸的图片 URL
-                        return (String) src.get("medium");
+                        String imageUrl = (String) src.get("medium");
+                        System.out.println("✅ Pexels 找到图片: " + imageUrl);
+                        return imageUrl;
                     }
                 }
             }
         } catch (Exception e) {
-            // 搜索失败，返回 null
+            System.err.println("❌ Pexels 搜索失败: " + e.getMessage());
         }
         return null;
     }

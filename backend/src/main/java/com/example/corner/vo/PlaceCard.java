@@ -1,6 +1,8 @@
 package com.example.corner.vo;
 
 import lombok.Data;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 // 地点卡片
@@ -18,4 +20,6 @@ public class PlaceCard {
     private String matchReason; // 匹配原因
     private String lastVisited; // 最后访问时间
     private String tips; // 注意事项/贴士
+    private BigDecimal latitude;
+    private BigDecimal longitude;
 }
