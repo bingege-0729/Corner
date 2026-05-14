@@ -15,7 +15,7 @@ public class PlaceController {
     private PlaceService placeService;
     
     /**
-     * 接口6：地点详情
+     * 地点详情
      */
     @GetMapping("/detail/{placeId}")
     public Result<PlaceDetailResponse> getPlaceDetail(HttpServletRequest request,

@@ -18,7 +18,7 @@ public class TagController {
     private TagService tagService;
     
     /**
-     * 接口2：获取全部标签
+     * 获取全部标签
      */
     @GetMapping("/tags")
     public Result<Map<String, Object>> getTags() {

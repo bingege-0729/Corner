@@ -22,6 +22,11 @@ public class LocationController {
     @Autowired
     private BaiduMapService baiduMapService;
 
+    /**
+     * 获取当前位置
+     * @param request HTTP请求对象
+     * @return 当前位置信息
+     */
     @GetMapping("/current")
     public Result<Map<String, Object>> getCurrentLocation(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
@@ -30,6 +35,12 @@ public class LocationController {
         return Result.success(location);
     }
 
+    /**
+     * 更新位置信息
+     * @param request HTTP请求对象
+     * @param locationData 位置信息数据
+     * @return 更新结果
+     */
     @PostMapping("/update")
     public Result<String> updateLocation(HttpServletRequest request,
                                          @RequestBody(required = false) Map<String, Object> locationData) {
@@ -64,6 +75,12 @@ public class LocationController {
         }
     }
 
+    /**
+     * 反向地理编码
+     * @param latitude 纬度
+     * @param longitude 经度
+     * @return 反向地理编码结果
+     */
     @GetMapping("/reverse-geocoding")
     public Result<Map<String, Object>> reverseGeocoding(
             @RequestParam BigDecimal latitude,
@@ -77,6 +94,12 @@ public class LocationController {
         }
     }
 
+    /**
+     * 通过IP获取位置信息
+     * @param ip IP地址
+     * @param request HTTP请求对象
+     * @return 位置信息
+     */
     @GetMapping("/ip-location")
     public Result<Map<String, Object>> getLocationByIp(
             @RequestParam(required = false) String ip,

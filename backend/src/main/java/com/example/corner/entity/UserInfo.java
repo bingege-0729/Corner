@@ -17,7 +17,9 @@ public class UserInfo {
     private String phone; // 手机号
     
     private String nickname; // 昵称
-    
+
+    private String avatarUrl; // 头像URL路径
+
     @Column(name = "latitude", precision = 10, scale = 7)
     private BigDecimal latitude; // 纬度
     

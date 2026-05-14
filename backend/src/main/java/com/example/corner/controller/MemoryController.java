@@ -16,7 +16,7 @@ public class MemoryController {
     private MemoryService memoryService;
     
     /**
-     * 接口4：推荐反馈
+     * 推荐反馈
      */
     @PostMapping("/place/feedback")
     public Result<Void> feedback(HttpServletRequest request, 
@@ -27,7 +27,7 @@ public class MemoryController {
     }
     
     /**
-     * 接口5：我的记忆列表
+     * 我的记忆列表
      */
     @GetMapping("/memory/list")
     public Result<MemoryListResponse> getMemoryList(HttpServletRequest request,
