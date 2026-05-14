@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue';
-import { chat } from '../api/index';
+import { getRecommend } from '../api/index';
 
 const props = defineProps({
   understanding: {
@@ -52,9 +52,9 @@ const handleSend = async () => {
   isTyping.value = true;
   
   try {
-    const res = await chat({
-      userInput: text,
-      enableStream: false
+    // 修复点：改用 getRecommend 接口，它返回 JSON 格式且包含推荐地点
+    const res = await getRecommend({
+      userInput: text
     });
     
     if (res.code === 200) {
@@ -84,8 +84,9 @@ const handleSend = async () => {
 
 <template>
   <div class="result-page">
-    <!-- Chat Area -->
+    <!-- Main Scrollable Area -->
     <div class="chat-container" ref="chatContainer">
+      <!-- 1. Chat Bubbles -->
       <div 
         v-for="(msg, index) in messages" 
         :key="index" 
@@ -104,43 +105,46 @@ const handleSend = async () => {
           <span>.</span><span>.</span><span>.</span>
         </div>
       </div>
-    </div>
 
-    <!-- AI Web Search Results Header -->
-    <h2 class="section-title" v-if="places.some(p => p.matchType === 'WEB_SEARCH')">
-      全网发现 <span>(AI 实时搜索)</span>
-    </h2>
+      <!-- 2. Recommendations (Integrated into scroll flow) -->
+      <div class="recommendations-flow" v-if="places && places.length > 0">
+        <!-- AI Web Search Results Header -->
+        <h2 class="section-title" v-if="places.some(p => p.matchType === 'WEB_SEARCH')">
+          全网发现 <span>(AI 实时搜索)</span>
+        </h2>
 
-    <!-- Memory Match Header -->
-    <h2 class="section-title" v-if="places.some(p => p.matchType === 'memory_match')">
-      记忆匹配 <span>(根据你的记忆)</span>
-    </h2>
+        <!-- Memory Match Header -->
+        <h2 class="section-title" v-if="places.some(p => p.matchType === 'memory_match')">
+          记忆匹配 <span>(根据你的记忆)</span>
+        </h2>
 
-    <!-- Emotion Match Header -->
-    <h2 class="section-title" v-if="places.some(p => p.matchType === 'emotion_match')">
-      情绪匹配 <span>(符合当前心情)</span>
-    </h2>
+        <!-- Emotion Match Header -->
+        <h2 class="section-title" v-if="places.some(p => p.matchType === 'emotion_match')">
+          情绪匹配 <span>(符合当前心情)</span>
+        </h2>
 
-    <!-- Results List -->
-    <div class="results-list">
-      <div 
-        v-for="place in places" 
-        :key="place.placeId" 
-        class="place-card"
-        :style="{ backgroundImage: `url(${place.imageUrl || '../assets/img/bg.png'})` }"
-        @click="emit('select-place', place)"
-      >
-        <div class="card-overlay">
-          <div class="tag-row">
-            <span v-for="tag in place.moodTags" :key="tag" class="place-tag">{{ tag }}</span>
-          </div>
-          <h4 class="place-name">{{ place.placeName }}</h4>
-          <div class="distance-row">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M12 8V12L14 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>{{ place.distanceText || '距离未知' }}</span>
+        <!-- Results List -->
+        <div class="results-list">
+          <div 
+            v-for="place in places" 
+            :key="place.placeId" 
+            class="place-card"
+            :style="{ backgroundImage: `url(${place.imageUrl || '/images/place/default.jpg'})` }"
+            @click="emit('select-place', place)"
+          >
+            <div class="card-overlay">
+              <div class="tag-row">
+                <span v-for="tag in place.moodTags" :key="tag" class="place-tag">{{ tag }}</span>
+              </div>
+              <h4 class="place-name">{{ place.placeName }}</h4>
+              <div class="distance-row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 8V12L14 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>{{ place.distanceText || '距离需自行确认' }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -171,17 +175,18 @@ const handleSend = async () => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 160px); /* 减去顶部和底部导航高度 */
+  height: 100vh;
   background: #fcfbf9;
+  position: relative;
 }
 
 .chat-container {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 24px;
+  padding: 80px 24px 180px; /* 顶部留出 TopBar 空间，底部留出输入框空间 */
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .message-bubble {
@@ -249,8 +254,9 @@ const handleSend = async () => {
 
 /* Places Section */
 .places-section {
-  padding: 0 24px 180px;
+  padding: 20px 0;
   flex-shrink: 0;
+  margin-top: 10px;
 }
 
 .section-title {
