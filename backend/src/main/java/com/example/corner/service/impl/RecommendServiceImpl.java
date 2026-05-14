@@ -1,13 +1,19 @@
 package com.example.corner.service.impl;
 
 import com.example.corner.dto.RecommendRequest;
-
 import com.example.corner.repository.UserPlaceMemoryRepository;
+import com.example.corner.repository.UserMoodRecordRepository;
 import com.example.corner.service.RecommendService;
 import com.example.corner.service.aiService.RecommendAIService;
 import com.example.corner.vo.RecommendResponse;
+import com.example.corner.entity.UserMoodRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 import static com.example.corner.common.RedisConstant.USER_MEMORY_KEY_PREFIX;
 
@@ -21,7 +27,7 @@ public class RecommendServiceImpl implements RecommendService {
     private RecommendAIService recommendAIService;
 
     @Autowired
-    private com.example.corner.repository.UserMoodRecordRepository userMoodRecordRepository;
+    private UserMoodRecordRepository userMoodRecordRepository;
 
     /**
      * 核心推荐
@@ -31,7 +37,7 @@ public class RecommendServiceImpl implements RecommendService {
      * @return 响应VO
      */
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public RecommendResponse recommend(Long userId, RecommendRequest request) {
         // 1. 记录用户当前的心情标签（映射到 好心情、平静、烦闷时）
         recordUserMood(userId, request);
@@ -53,10 +59,11 @@ public class RecommendServiceImpl implements RecommendService {
         if (request.getMood() == null || request.getMood().isEmpty()) return;
 
         String[] tags = request.getMood().split(",");
-        java.util.Set<String> categories = new java.util.HashSet<>();
+        Set<String> categories = new HashSet<>();
 
         for (String tag : tags) {
             tag = tag.trim();
+            // 映射逻辑
             if (tag.contains("烦闷") || tag.contains("枯竭")) {
                 categories.add("烦闷时");
             } else if (tag.contains("安静")) {
@@ -68,12 +75,12 @@ public class RecommendServiceImpl implements RecommendService {
 
         // 保存心情记录
         for (String category : categories) {
-            com.example.corner.entity.UserMoodRecord record = new com.example.corner.entity.UserMoodRecord();
+            UserMoodRecord record = new UserMoodRecord();
             record.setUserId(userId);
             record.setMoodTag(category);
             record.setEnergyLevel(request.getEnergyLevel());
             record.setSocialLevel(request.getSocialLevel());
-            record.setCreatedAt(java.time.LocalDateTime.now());
+            record.setCreatedAt(LocalDateTime.now());
             userMoodRecordRepository.save(record);
         }
     }
