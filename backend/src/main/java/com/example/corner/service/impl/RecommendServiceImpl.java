@@ -38,6 +38,23 @@ public class RecommendServiceImpl implements RecommendService {
                 request.getMood() != null ? request.getMood() : ""
         );
 
-        return recommendAIService.getRecommend(userMessage, USER_MEMORY_KEY_PREFIX + userId);
+        RecommendResponse response = recommendAIService.getRecommend(userMessage, USER_MEMORY_KEY_PREFIX + userId);
+        
+        // 后处理：清理 understanding 字段，确保不包含思考过程
+        if (response != null && response.getUnderstanding() != null) {
+            String understanding = response.getUnderstanding();
+            
+            // 移除常见的思考过程关键词
+            understanding = understanding
+                .replaceAll("(?m)^让我.*?\\n", "")  // 移除“让我...”开头的行
+                .replaceAll("(?m)^首先.*?\\n", "")  // 移除“首先...”开头的行
+                .replaceAll("(?m)^我需要.*?\\n", "")  // 移除“我需要...”开头的行
+                .replaceAll("根据工具返回.*?[,，]", "")  // 移除“根据工具返回”
+                .trim();
+            
+            response.setUnderstanding(understanding);
+        }
+        
+        return response;
     }
 }

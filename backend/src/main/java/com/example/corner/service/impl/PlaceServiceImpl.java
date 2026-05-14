@@ -47,8 +47,13 @@ public class PlaceServiceImpl implements PlaceService {
      **/
     @Override
     public PlaceDetailResponse getPlaceDetail(Long userId, Long placeId) {
+        // 处理网络搜索地点（无数据库ID）
+        if (placeId == null || placeId == -1L) {
+            throw new RuntimeException("该地点为网络搜索结果，暂无详细信息");
+        }
+        
         PlaceEmotionLibrary place = placeEmotionLibraryRepository.findById(placeId)
-                .orElseThrow(() -> new RuntimeException("地点不存在"));
+                .orElseThrow(() -> new RuntimeException("地点不存在，ID: " + placeId));
         
         // 获取标签
         List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(placeId);
@@ -98,9 +103,14 @@ public class PlaceServiceImpl implements PlaceService {
      */
     @Override
     public TravelTipCard generateTravelTips(Long userId, Long placeId) {
+        // 处理网络搜索地点（无数据库ID）
+        if (placeId == null || placeId == -1L) {
+            throw new RuntimeException("该地点为网络搜索结果，无法生成出行提示");
+        }
+        
         // 1. 获取地点信息
         PlaceEmotionLibrary place = placeEmotionLibraryRepository.findById(placeId)
-                .orElseThrow(() -> new RuntimeException("地点不存在"));
+                .orElseThrow(() -> new RuntimeException("地点不存在，ID: " + placeId));
         
         // 2. 获取用户当前位置
         UserInfo user = userInfoRepository.findById(userId)
