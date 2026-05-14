@@ -1,7 +1,8 @@
 import axios from "axios"
 
 const instance = axios.create({
-    baseURL: "/api"
+    baseURL: "/api",
+    timeout: 60000 // 延长至 60 秒
 })
 
 instance.interceptors.request.use(config=>{

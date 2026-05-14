@@ -12,12 +12,13 @@
     import BottomNav from './components/BottomNav.vue';
     import { 
       login, 
+      getUserStats,
       getTags, 
       getRecommend, 
       getPlaceDetail, 
       getBookmarks, 
       toggleBookmark,
-      chat 
+      updateLocation
     } from './api/index' 
 
     const currentPage = ref('login'); 
@@ -26,7 +27,28 @@
 
     onMounted(() => {
         fetchTags();
+        const token = localStorage.getItem('token');
+        if (token) {
+            currentPage.value = 'home';
+            fetchStats();
+            syncLocation();
+        }
     });
+
+    const syncLocation = () => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            try {
+                await updateLocation({ latitude, longitude });
+                console.log('位置已更新');
+            } catch (err) {
+                console.log('更新位置失败', err);
+            }
+        }, (err) => {
+            console.log('获取定位失败', err);
+        });
+    };
 
     // 监听标签切换，重置页面状态到入口页
     watch(activeTab, () => {
@@ -44,6 +66,8 @@
                 user_info.value = res.data;
                 localStorage.setItem('token', res.data.token);
                 currentPage.value = 'home';
+                fetchStats();
+                syncLocation();
             }
         } catch (err) {
             console.log('登录失败', err);
@@ -53,6 +77,17 @@
     const goToResult = () => {
         currentPage.value = 'result';
     }
+
+    const toastVisible = ref(false);
+    const toastMessage = ref('已存入记忆 ✨');
+    
+    const showToast = (message) => {
+        if (message) toastMessage.value = message;
+        toastVisible.value = true;
+        setTimeout(() => {
+            toastVisible.value = false;
+        }, 2000);
+    };
 
     const currentPlace = ref(null);
     const selectPlace = (place) => {
@@ -100,9 +135,12 @@
                 understanding.value = res.data.understanding
                 emotionMatches.value = res.data.emotionMatches
                 currentPage.value = 'result'
+            } else {
+                showToast(res.message || 'AI 思考时走神了，请重试')
             }
         } catch (err) {
             console.log('获取推荐失败', err)
+            showToast('信号好像不太好，请稍后再试')
         } finally {
             isAiLoading.value = false
         }
