@@ -170,6 +170,7 @@
             :understanding="understanding" 
             :places="emotionMatches" 
             @select-place="selectPlace" 
+            @update-results="emotionMatches = $event"
           />
         </div>
         <div v-if="currentPage === 'detail'" class="tab-page">

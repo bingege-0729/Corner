@@ -19,4 +19,5 @@ public class PlaceCard {
     private String lastVisited; // 最后访问时间
     private java.math.BigDecimal latitude; // 纬度
     private java.math.BigDecimal longitude; // 经度
+    private String status; // 状态：记忆中 / 待探索
 }
