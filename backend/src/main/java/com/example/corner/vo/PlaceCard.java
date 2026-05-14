@@ -17,4 +17,6 @@ public class PlaceCard {
     private String matchType; // 匹配类型 （收藏/历史/不感兴趣）
     private String matchReason; // 匹配原因
     private String lastVisited; // 最后访问时间
+    private java.math.BigDecimal latitude; // 纬度
+    private java.math.BigDecimal longitude; // 经度
 }

@@ -27,10 +27,11 @@ public class MemoryController {
      */
     @PostMapping("/{placeId}/bookmark")
     public Result<Void> toggleBookmark(HttpServletRequest request,
-                                       @PathVariable Long placeId) {
+                                       @PathVariable Long placeId,
+                                       @RequestBody(required = false) PlaceCard placeCard) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("用户切换收藏状态: userId={}, placeId={}", userId, placeId);
-        placeService.toggleBookmark(userId, placeId);
+        placeService.toggleBookmark(userId, placeId, placeCard);
         return Result.success();
     }
 

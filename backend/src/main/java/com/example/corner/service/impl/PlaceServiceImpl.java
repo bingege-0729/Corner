@@ -212,27 +212,53 @@ public class PlaceServiceImpl implements PlaceService {
      */
     @Override
     @Transactional
-    public void toggleBookmark(Long userId, Long placeId) {
+    public void toggleBookmark(Long userId, Long placeId, PlaceCard placeCard) {
+        Long targetPlaceId = placeId;
+
+        // 1. 处理外部地点入库（如果是联网搜索出来的地点，其ID为-1）
+        if (placeId == -1L && placeCard != null) {
+            // 先尝试根据名字和地址查找是否已存在（避免重复入库）
+            Optional<PlaceEmotionLibrary> existingPlace = placeEmotionLibraryRepository
+                    .findAll().stream()
+                    .filter(p -> p.getPlaceName().equals(placeCard.getPlaceName()) && p.getAddress().equals(placeCard.getAddress()))
+                    .findFirst();
+
+            if (existingPlace.isPresent()) {
+                targetPlaceId = existingPlace.get().getId();
+            } else {
+                // 入库新地点
+                PlaceEmotionLibrary newPlace = new PlaceEmotionLibrary();
+                newPlace.setPlaceName(placeCard.getPlaceName());
+                newPlace.setAddress(placeCard.getAddress());
+                newPlace.setOneSentence(placeCard.getOneSentence());
+                newPlace.setImageUrl(placeCard.getImageUrl());
+                newPlace.setCrowdLevel(placeCard.getCrowdLevel());
+                newPlace.setLatitude(placeCard.getLatitude());
+                newPlace.setLongitude(placeCard.getLongitude());
+                newPlace.setTips("来自AI推荐的外部地点");
+                // 保存并获取真实ID
+                newPlace = placeEmotionLibraryRepository.save(newPlace);
+                targetPlaceId = newPlace.getId();
+            }
+        }
+
+        // 2. 正常执行收藏/取消收藏逻辑
         Optional<UserPlaceMemory> memoryOpt = userPlaceMemoryRepository
-                .findByUserIdAndPlaceId(userId, placeId);
+                .findByUserIdAndPlaceId(userId, targetPlaceId);
         
         if (memoryOpt.isPresent()) {
-            // 如果已存在，检查是否是收藏状态
             UserPlaceMemory memory = memoryOpt.get();
             if ("BOOKMARKED".equals(memory.getInteractionType())) {
-                // 取消收藏：删除记录
                 userPlaceMemoryRepository.delete(memory);
             } else {
-                // 更新为收藏状态
                 memory.setInteractionType("BOOKMARKED");
                 memory.setUpdatedAt(LocalDateTime.now());
                 userPlaceMemoryRepository.save(memory);
             }
         } else {
-            // 新建收藏记录
             UserPlaceMemory memory = new UserPlaceMemory();
             memory.setUserId(userId);
-            memory.setPlaceId(placeId);
+            memory.setPlaceId(targetPlaceId);
             memory.setInteractionType("BOOKMARKED");
             memory.setVisitedAt(LocalDate.now());
             memory.setCreatedAt(LocalDateTime.now());
