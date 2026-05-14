@@ -1,11 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { getDiscoveryPlaces } from '../api/index';
 
 const emit = defineEmits(['explore-mood', 'select-place']);
 
 const places = ref([]);
 const loading = ref(false);
+let map = null;
 
 onMounted(() => {
   fetchPlaces();
@@ -17,6 +18,10 @@ const fetchPlaces = async () => {
     const res = await getDiscoveryPlaces();
     if (res.code === 200) {
       places.value = res.data;
+      // 数据加载后初始化地图
+      nextTick(() => {
+        initMap();
+      });
     }
   } catch (err) {
     console.log('获取发现列表失败', err);
@@ -24,14 +29,62 @@ const fetchPlaces = async () => {
     loading.value = false;
   }
 };
+
+const initMap = () => {
+  if (!window.BMap) {
+    console.warn('百度地图 SDK 尚未加载');
+    return;
+  }
+
+  // 初始化地图实例
+  map = new window.BMap.Map("allmap");
+  
+  if (places.value.length > 0) {
+    // 根据地点打点
+    const points = [];
+    places.value.forEach(place => {
+      if (place.latitude && place.longitude) {
+        const point = new window.BMap.Point(place.longitude, place.latitude);
+        points.push(point);
+        const marker = new window.BMap.Marker(point);
+        map.addOverlay(marker);
+        
+        // 点击标记提示地点名
+        const label = new window.BMap.Label(place.placeName, { offset: new window.BMap.Size(20, -10) });
+        label.setStyle({
+          border: 'none',
+          padding: '4px 8px',
+          borderRadius: '10px',
+          fontSize: '12px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+        });
+        marker.setLabel(label);
+      }
+    });
+
+    if (points.length > 0) {
+      // 自动缩放并居中到包含所有点
+      map.setViewport(points);
+    } else {
+      // 默认中心：深圳
+      map.centerAndZoom(new window.BMap.Point(114.057868, 22.543099), 13);
+    }
+  } else {
+    // 默认中心：深圳
+    map.centerAndZoom(new window.BMap.Point(114.057868, 22.543099), 13);
+  }
+
+  // 允许鼠标滚轮缩放
+  map.enableScrollWheelZoom(true);
+};
 </script>
 
 <template>
   <div class="discover-page">
     <!-- Map Exploration Card -->
     <div class="explore-map-card">
-      <div class="map-preview">
-        <!-- Tags removed for a cleaner look -->
+      <div class="map-preview" id="allmap">
+        <!-- Baidu Map will render here -->
       </div>
       <button class="btn-explore-mood" @click="emit('explore-mood')">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -114,13 +167,11 @@ const fetchPlaces = async () => {
 }
 
 .map-preview {
-  height: 180px;
-  background: #e5e5e5;
+  height: 220px;
+  background: #f8f9fa;
   border-radius: 20px;
   position: relative;
   overflow: hidden;
-  background-image: radial-gradient(circle, #ddd 1px, transparent 1px);
-  background-size: 20px 20px;
 }
 
 .btn-explore-mood {

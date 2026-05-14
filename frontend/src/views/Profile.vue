@@ -68,10 +68,12 @@ const handleAvatarUpload = async (event) => {
   try {
     const res = await uploadAvatar(formData);
     if (res.code === 200) {
-      // 修复点：后端返回的是 AvatarResponse 对象，URL 字段名是 avatarUrl
+      // 这里的 res.data 是 AvatarResponse 对象
       const rawUrl = res.data.avatarUrl;
       const newUrl = rawUrl.startsWith('http') ? rawUrl : `http://localhost:8080${rawUrl}`;
       avatarUrl.value = newUrl;
+      // 重新拉取统计信息，确保数据同步
+      fetchStats();
     }
   } catch (err) {
     console.log('头像上传失败', err);
