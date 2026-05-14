@@ -1,61 +1,54 @@
 <script setup>
-const emit = defineEmits(['select-place']);
+import { ref, onMounted } from 'vue';
+import { getBookmarks } from '../api/index';
 
-const memories = [
-  {
-    id: 1,
-    name: '沙河公园湖边长椅',
-    date: 'Oct 12, 2023',
-    tags: ['#安静', '#独处'],
-    image: new URL('../assets/img/bg.png', import.meta.url).href,
-    reason: "这里的气氛和'安静独处'简直绝配。",
-    flow: '少',
-    advice: '建议带驱蚊水。最近的厕所在公园北门。'
-  },
-  {
-    id: 2,
-    name: '旧图书馆窗边',
-    date: 'Sep 05, 2023',
-    tags: ['#阅读', '#午后阳光'],
-    image: new URL('../assets/img/bg.png', import.meta.url).href,
-    reason: "阳光洒在书页上的感觉太棒了。",
-    flow: '极少',
-    advice: '光线较强，注意防晒。'
-  },
-  {
-    id: 3,
-    name: '老街区深巷',
-    date: 'Aug 22, 2023',
-    tags: ['#漫步', '#怀旧'],
-    image: new URL('../assets/img/bg.png', import.meta.url).href,
-    reason: "穿越时光的静谧感。",
-    flow: '一般',
-    advice: '注意路滑。'
+const emit = defineEmits(['select-place']);
+const memories = ref([]);
+const loading = ref(false);
+
+onMounted(() => {
+  fetchMemories();
+});
+
+const fetchMemories = async () => {
+  loading.value = true;
+  try {
+    const res = await getBookmarks();
+    if (res.code === 0) {
+      memories.value = res.data;
+    }
+  } catch (err) {
+    console.log('获取收藏列表失败', err);
+  } finally {
+    loading.value = false;
   }
-];
+};
 </script>
 
 <template>
   <div class="memory-page">
+    <div v-if="memories.length === 0 && !loading" class="empty-state">
+      还没有收藏任何角落哦
+    </div>
     <div class="memories-list">
       <div 
         v-for="memory in memories" 
-        :key="memory.id" 
+        :key="memory.placeId" 
         class="memory-card"
         @click="emit('select-place', memory)"
       >
         <div 
           class="memory-image-box" 
-          :style="{ backgroundImage: `url(${memory.image})` }"
+          :style="{ backgroundImage: `url(${memory.imageUrl || ''})` }"
         >
           <div class="image-overlay">
-            <span class="memory-date">{{ memory.date }}</span>
-            <h2 class="memory-name">{{ memory.name }}</h2>
+            <span class="memory-date">{{ memory.lastVisited || '刚刚收藏' }}</span>
+            <h2 class="memory-name">{{ memory.placeName }}</h2>
           </div>
         </div>
         <div class="memory-info">
           <div class="tag-row">
-            <span v-for="tag in memory.tags" :key="tag" class="memory-tag">{{ tag }}</span>
+            <span v-for="tag in memory.moodTags" :key="tag" class="memory-tag">{{ tag }}</span>
           </div>
         </div>
       </div>
@@ -66,6 +59,13 @@ const memories = [
 <style scoped>
 .memory-page {
   padding: 20px 24px 100px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 100px 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 .memories-list {

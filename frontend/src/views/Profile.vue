@@ -1,13 +1,34 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { getUserStats } from '../api/index';
 
 const emit = defineEmits(['logout', 'show-discover']);
 
 const stats = ref({
-  discovered: 12,
-  goodMood: 128,
-  blueMood: 32
+  discovered: 0,
+  moods: {}
 });
+
+const loading = ref(false);
+
+onMounted(() => {
+  fetchStats();
+});
+
+const fetchStats = async () => {
+  loading.value = true;
+  try {
+    const res = await getUserStats();
+    if (res.code === 0) {
+      stats.value.discovered = res.data.visitedPlacesCount;
+      stats.value.moods = res.data.moodStats || {};
+    }
+  } catch (err) {
+    console.log('获取统计数据失败', err);
+  } finally {
+    loading.value = false;
+  }
+};
 
 const showLogoutConfirm = ref(false);
 
@@ -20,7 +41,7 @@ const handleLogout = () => {
   emit('logout');
 };
 
-const avatarUrl = new URL('../assets/img/bg.png', import.meta.url).href;
+const avatarUrl = ref('https://api.dicebear.com/7.x/avataaars/svg?seed=Corner');
 </script>
 
 <template>
@@ -41,16 +62,14 @@ const avatarUrl = new URL('../assets/img/bg.png', import.meta.url).href;
         <span class="stats-label">发现的角落</span>
       </div>
       
-      <div class="stats-card-group">
-        <div class="stats-sub-card">
-          <span class="stats-number">{{ stats.goodMood }}</span>
-          <span class="stats-label">好心情</span>
+      <div class="stats-card-group" v-if="Object.keys(stats.moods).length > 0">
+        <div v-for="(count, mood) in stats.moods" :key="mood" class="stats-sub-card">
+          <span class="stats-number">{{ count }}</span>
+          <span class="stats-label">{{ mood }}</span>
         </div>
-        <div class="divider"></div>
-        <div class="stats-sub-card">
-          <span class="stats-number">{{ stats.blueMood }}</span>
-          <span class="stats-label">烦闷时</span>
-        </div>
+      </div>
+      <div v-else class="stats-card-group empty-stats">
+        <p>还没有心情记录哦</p>
       </div>
     </div>
 

@@ -58,6 +58,7 @@
     const selectPlace = (place) => {
         previousPage.value = currentPage.value; // 保存当前页面
         currentPlace.value = place;
+        fetchPlaceDetail(place.placeId); // 获取详情
         currentPage.value = 'detail';
     }
 
@@ -132,6 +133,7 @@
             const res = await getPlaceDetail(placeId)
             if (res.code === 0) {
                 placeDetailData.value = res.data
+                currentPlace.value = res.data // 更新为详细数据
             }
         } catch (err) {
             console.log('获取地点详情失败', err)

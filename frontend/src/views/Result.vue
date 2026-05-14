@@ -62,7 +62,7 @@ const handleSend = async () => {
       >
         <div class="card-overlay">
           <div class="tag-row">
-            <span v-for="tag in place.tags" :key="tag" class="place-tag">{{ tag }}</span>
+            <span v-for="tag in place.moodTags" :key="tag" class="place-tag">{{ tag }}</span>
           </div>
           <h4 class="place-name">{{ place.placeName }}</h4>
           <div class="distance-row">
