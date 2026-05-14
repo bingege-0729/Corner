@@ -1,0 +1,142 @@
+/* Design System for Corner */
+:root {
+  /* Colors */
+  --primary-color: #53665e;
+  --primary-dark: #3e4d46;
+  --secondary-color: #f8f9fa;
+  --text-main: #2d3436;
+  --text-muted: #636e72;
+  --text-light: #b2bec3;
+  --bg-color: #ffffff;
+  --bg-gradient: linear-gradient(180deg, #ffffff 0%, #f1f3f2 100%);
+
+  /* Typography */
+  --font-serif: 'Playfair Display', "Source Han Serif CN", serif;
+  --font-sans: 'Inter', "PingFang SC", "Microsoft YaHei", sans-serif;
+
+  /* Font Sizes */
+  --fs-h1: 2.5rem;
+  --fs-h2: 1.5rem;
+  --fs-body: 1rem;
+  --fs-small: 0.875rem;
+
+  /* Spacing & Borders */
+  --radius-lg: 28px;
+  --radius-md: 16px;
+  --radius-sm: 10px;
+  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.04);
+  --safe-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  color: var(--text-main);
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* Typography Styles */
+h1,
+.logo-text {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  color: var(--primary-color);
+  letter-spacing: -0.02em;
+}
+
+h2,
+.slogan-text {
+  font-weight: 400;
+  color: var(--text-main);
+  letter-spacing: 0.05em;
+}
+
+/* Common Components */
+.card {
+  background: var(--bg-color);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+}
+
+.input-group {
+  background: #fdfdfd;
+  border: 1px solid #f1f1f1;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  transition: var(--transition);
+}
+
+.input-group:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(83, 102, 94, 0.1);
+}
+
+input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+input::placeholder {
+  color: var(--text-light);
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: var(--transition);
+  width: 100%;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(83, 102, 94, 0.2);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.text-muted {
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+
+.link {
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--primary-color);
+}
