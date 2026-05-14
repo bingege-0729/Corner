@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 const props = defineProps({
   tags: {
@@ -11,7 +11,41 @@ const props = defineProps({
 const userInput = ref('');
 const energyLevel = ref(4);
 const socialLevel = ref(7);
-const selectedTags = ref(['想被治愈']); // 改为数组支持多选
+const selectedTags = ref(['想被治愈']);
+const userLocation = ref({ lat: null, lng: null });
+const locationLoading = ref(false);
+
+onMounted(() => {
+  getUserLocation();
+});
+
+const getUserLocation = () => {
+  if (!navigator.geolocation) {
+    console.warn('浏览器不支持地理位置功能');
+    return;
+  }
+  
+  locationLoading.value = true;
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      userLocation.value = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+      locationLoading.value = false;
+      console.log('获取到用户位置:', userLocation.value);
+    },
+    (error) => {
+      console.warn('获取位置失败:', error.message);
+      locationLoading.value = false;
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 300000
+    }
+  );
+};
 
 // 预设的位置和颜色，用于将后端标签分布在页面上
 const visualPresets = [
@@ -66,8 +100,8 @@ const handleRecommend = () => {
     energyLevel: parseInt(energyLevel.value),
     socialLevel: parseInt(socialLevel.value),
     userInput: userInput.value,
-    userLat: 0, // Should be fetched from geolocation if possible
-    userLng: 0,
+    userLat: userLocation.value.lat || 0,
+    userLng: userLocation.value.lng || 0,
     enableStream: false
   };
   emit('submit', params);
@@ -81,6 +115,13 @@ const handleRecommend = () => {
     <div class="intro-section">
       <h2 class="title-serif">Hello, how are you feeling now?</h2>
       <p class="subtitle">花点时间让自己平静下来。</p>
+      
+      <!-- 位置状态提示 -->
+      <div class="location-status" :class="{ 'location-found': userLocation.lat, 'location-loading': locationLoading }">
+        <span v-if="locationLoading">📍 正在获取位置...</span>
+        <span v-else-if="userLocation.lat">📍 已获取位置，将推荐附近地点</span>
+        <span v-else>⚠️ 未获取到位置，使用默认位置</span>
+      </div>
     </div>
 
     <!-- Scattered Word Cloud Section -->
@@ -174,6 +215,27 @@ const handleRecommend = () => {
   font-size: 1.6rem;
   color: var(--text-main);
   margin-bottom: 8px;
+}
+
+.location-status {
+  margin-top: 12px;
+  padding: 8px 16px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: #f5f5f5;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.location-status.location-found {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.location-status.location-loading {
+  background: #fff3e0;
+  color: #ef6c00;
 }
 
 .mood-section {
