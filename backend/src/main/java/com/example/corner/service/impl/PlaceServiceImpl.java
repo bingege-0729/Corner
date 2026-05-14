@@ -237,6 +237,15 @@ public class PlaceServiceImpl implements PlaceService {
             log.debug("调用 AccuWeather Locations API: {}", locationUrl.replace(accuWeatherApiKey, "***"));
             
             String locationResponse = restTemplate.getForObject(locationUrl, String.class);
+            
+            // 检查响应是否为null
+            if (locationResponse == null || locationResponse.trim().isEmpty()) {
+                log.warn("AccuWeather Locations API 返回空响应");
+                result.put("success", false);
+                result.put("error", "未获取到位置信息");
+                return result;
+            }
+            
             JsonNode locationNode = objectMapper.readTree(locationResponse);
             
             if (locationNode.isArray() && locationNode.size() > 0) {
@@ -252,6 +261,15 @@ public class PlaceServiceImpl implements PlaceService {
                 log.debug("调用 AccuWeather Current Conditions API");
                 
                 String weatherResponse = restTemplate.getForObject(weatherUrl, String.class);
+                
+                // 检查响应是否为null
+                if (weatherResponse == null || weatherResponse.trim().isEmpty()) {
+                    log.warn("AccuWeather Current Conditions API 返回空响应");
+                    result.put("success", false);
+                    result.put("error", "未获取到天气数据");
+                    return result;
+                }
+                
                 JsonNode weatherArray = objectMapper.readTree(weatherResponse);
                 
                 if (weatherArray.isArray() && weatherArray.size() > 0) {
