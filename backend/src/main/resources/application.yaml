@@ -32,14 +32,31 @@ langchain4j:
       log-requests: true
       log-responses: true
     streaming-chat-model:
-      base-url: https://api.deepseek.com/v1
-      api-key: sk-1d01ad72852447b599e3baeea90be6a6
-      model-name: deepseek-chat
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${OPENAI_API_KEY}
+      model-name: qwen-turbo
+      #开启log日志
       log-requests: true
       log-responses: true
+    embedding-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${OPENAI_API_KEY}
+      model-name: text-embedding-v3
+      dimension: 1024
+      #开启log日志
+      log-requests: true
+      log-responses: true
+      max-segments-per-batch: 10
+  community:
+    redis:
+      host: localhost
+      port: 6379
 jwt:
   secret: your-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
   expiration: 86400000
+logging:
+  level:
+    dev.langchain4j: debug
 
 # 百度地图API配置
 baidu:

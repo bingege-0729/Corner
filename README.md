@@ -4,7 +4,7 @@
 Corner 是一个基于情绪推荐的地点推荐系统，根据用户当前的心情和状态，推荐适合的情绪地点。
 
 ## 技术栈
-- Spring Boot 4.0.6
+- Spring Boot 3.5.14
 - Java 17
 - MySQL 8.0+
 - JPA/Hibernate
@@ -179,7 +179,7 @@ backend/src/main/resources/
 - JDK 17+
 - Maven 3.6+
 - MySQL 8.0+
-- Redis 6.0+（用于会话记忆存储）
+- Redis 6.0+（用于会话记忆存储和向量数据库）
 
 ### 2. 数据库和Redis配置
 1. 创建数据库并导入初始数据：
@@ -200,7 +200,25 @@ spring:
       port: 6379
 ```
 
-3. 配置 DeepSeek API 密钥（在 `.env` 文件中）：
+3. **启动 Redis 服务**（必需）：
+
+**使用 Docker（推荐）**：
+```bash
+docker run -d -p 6379:6379 --name redis redis
+```
+
+**或本地启动**：
+```bash
+redis-server
+```
+
+验证 Redis 是否运行：
+```bash
+redis-cli ping
+# 应返回 PONG
+```
+
+4. 配置 DeepSeek API 密钥（在 `.env` 文件中）：
 ```env
 LLM_API_KEY=your_deepseek_api_key_here
 ```
@@ -216,6 +234,8 @@ jwt:
 cd backend
 mvn spring-boot:run
 ```
+
+**注意**：首次启动时，应用会自动初始化地点向量数据到 Redis，请确保 Redis 服务已启动。
 
 ### 4. 测试接口
 使用 Postman 或其他 API 测试工具测试接口。
@@ -271,14 +291,25 @@ curl -X POST http://localhost:8080/api/recommend \
 - 情绪标签字典管理
 - 地点标签关联查询
 
+### 6. 向量检索模块（新增）
+- 基于 Redis 的向量数据库存储地点描述向量
+- 使用 text-embedding-v3 模型生成 1024 维向量
+- 应用启动时自动初始化官方地点向量数据
+- 支持语义相似度搜索，实现智能地点推荐
+
 ## 注意事项
 
 1. **DeepSeek API 密钥**: 在 `.env` 文件中配置 `LLM_API_KEY`，确保密钥有效
 2. **数据库密码**: 根据实际情况修改数据库密码
-3. **Redis 配置**: 确保 Redis 服务正常运行，用于会话记忆存储
+3. **Redis 服务**: 
+   - **必须启动 Redis 服务**，否则应用无法启动
+   - Redis 用于两部分功能：
+     - 会话记忆存储（ChatMemory）
+     - 向量数据库（EmbeddingStore）存储地点向量
 4. **JWT 密钥**: 生产环境务必修改为强密钥（至少32字符）
-5. **距离计算**: 使用了简化的 Haversine 公式计算距离
-6. **图片资源**: 需要自行准备图片资源或修改为外部图片链接
+5. **向量维度配置**: `application.yaml` 中 `langchain4j.openai.embedding-model.dimension` 需与使用的 embedding 模型匹配（text-embedding-v3 为 1024 维）
+6. **距离计算**: 使用了简化的 Haversine 公式计算距离
+7. **图片资源**: 需要自行准备图片资源或修改为外部图片链接
 
 ## 后续优化方向
 

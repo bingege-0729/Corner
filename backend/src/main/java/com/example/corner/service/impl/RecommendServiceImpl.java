@@ -63,8 +63,15 @@ public class RecommendServiceImpl implements RecommendService {
                 request.getUserLat(),
                 request.getUserLng(),
                 USER_MEMORY_KEY_PREFIX + userId
+        String userMessage = String.format(
+                "userId=%d, 用户输入=%s, 纬度=%s, 经度=%s, 用户心情=%s",
+                userId,
+                request.getUserInput() != null ? request.getUserInput() : "",
+                request.getUserLat(),
+                request.getUserLng(),
+                request.getMood() != null ? request.getMood() : ""
         );
-        
-        return response;
+
+        return recommendAIService.getRecommend(userMessage, USER_MEMORY_KEY_PREFIX + userId);
     }
 }

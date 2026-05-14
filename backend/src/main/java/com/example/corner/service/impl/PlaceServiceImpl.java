@@ -325,4 +325,10 @@ public class PlaceServiceImpl implements PlaceService {
         return result;
     }
 
+     * 获取所有地点（包含标签信息）
+     */
+    @Override
+    public List<PlaceEmotionLibrary> getAllPlacesWithTags() {
+        return placeEmotionLibraryRepository.findAll();
+    }
 }

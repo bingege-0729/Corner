@@ -33,7 +33,7 @@ public class MemoryController {
         placeService.toggleBookmark(userId, placeId);
         return Result.success();
     }
-    
+
     /**
      * 获取用户收藏的地点列表
      */

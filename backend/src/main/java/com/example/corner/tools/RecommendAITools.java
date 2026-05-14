@@ -11,13 +11,24 @@ import com.example.corner.repository.UserPlaceMemoryRepository;
 import com.example.corner.vo.PlaceCard;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
@@ -34,6 +45,15 @@ public class RecommendAITools {
     
     @Autowired
     private UserPlaceMemoryRepository userPlaceMemoryRepository;
+    
+    @Autowired
+    private EmbeddingStore<TextSegment> embeddingStore;
+
+    @Autowired
+    private EmbeddingModel embeddingModel;
+    
+    // 推荐结果缓存Key前缀
+    private static final String RECOMMEND_CACHE_KEY = "recommend_cache:";
 
     /**
      * 根据情绪+用户收藏+位置推荐地点（三层策略）
@@ -52,44 +72,44 @@ public class RecommendAITools {
             @P("用户位置纬度") BigDecimal latitude,
             @P("用户位置经度") BigDecimal longitude
             ){
-        
+
         // 1. 查询用户所有记忆，排除DISLIKED
         List<UserPlaceMemory> allMemories = userPlaceMemoryRepository.findByUserId(userId);
         List<UserPlaceMemory> validMemories = allMemories.stream()
                 .filter(memory -> !"DISLIKED".equals(memory.getInteractionType()))
                 .toList();
-        
+
         // 获取用户去过的地点ID列表
         List<Long> visitedPlaceIds = validMemories.stream()
                 .map(UserPlaceMemory::getPlaceId)
                 .distinct()
                 .collect(Collectors.toList());
-        
+
         List<PlaceCard> result = new ArrayList<>();
-        
+
         // 2. 第一层：如果用户有记忆，计算匹配分数
         if (!validMemories.isEmpty()) {
             List<PlaceEmotionLibrary> memoryPlaces = placeEmotionLibraryRepository.findAllById(visitedPlaceIds);
             List<ScoredPlace> scoredPlaces = new ArrayList<>();
-            
+
             for (UserPlaceMemory memory : validMemories) {
                 PlaceEmotionLibrary place = memoryPlaces.stream()
                         .filter(p -> p.getId().equals(memory.getPlaceId()))
                         .findFirst()
                         .orElse(null);
-                
+
                 if (place != null) {
                     double score = calculateMatchScore(memory, place, mood);
                     scoredPlaces.add(new ScoredPlace(place, memory, score));
                 }
             }
-            
+
             // 按分数降序排序，取前5个
             scoredPlaces.sort((a, b) -> Double.compare(b.score, a.score));
             List<ScoredPlace> topMemories = scoredPlaces.stream()
                     .limit(5)
                     .toList();
-            
+
             // 构建第一层结果（在5公里内的）
             for (ScoredPlace sp : topMemories) {
                 PlaceCard card = buildPlaceCardIfNearby(sp.place, latitude, longitude, mood, true);
@@ -98,13 +118,13 @@ public class RecommendAITools {
                 }
             }
         }
-        
+
         if (result.size() < 3) {
             // 获取所有匹配该情绪标签的地点ID
             List<EmotionTagDict> matchingTags = emotionTagDictRepository.findAll().stream()
                     .filter(tag -> tag.getTagName().equals(mood))
                     .collect(Collectors.toList());
-            
+
             if (!matchingTags.isEmpty()) {
                 // 获取除了去过的地点ID
                 List<Long> moodMatchedPlaceIds = matchingTags.stream()
@@ -131,16 +151,16 @@ public class RecommendAITools {
                 }
             }
         }
-        
+
         // 5. 最终按距离排序
         result.sort((a, b) -> {
             double distA = Double.parseDouble(a.getDistanceText().replaceAll("[^0-9.]", ""));
             double distB = Double.parseDouble(b.getDistanceText().replaceAll("[^0-9.]", ""));
             return Double.compare(distA, distB);
         });
-        
-        // 6. 限制最多返回3个
-        return result.stream().limit(3).collect(Collectors.toList());
+
+
+        return result;
     }
     
     /**
@@ -270,6 +290,67 @@ public class RecommendAITools {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         
         return R * c;
+    }
+
+    @Tool("searchByVector")
+    public List<PlaceCard> searchByVector(
+            @P("用户输入的查询文本") String query,
+            @P("用户ID")Long userId,
+            @P("用户纬度") BigDecimal latitude,
+            @P("用户经度") BigDecimal longitude
+    ){
+        //1.query转向
+        Embedding queryEmbedding = embeddingModel.embed(query).content();
+
+        //2.向量相似度度搜索
+        // 2. 向量相似度搜索 ← 这里是 search，不是 findRelevant
+        EmbeddingSearchResult<TextSegment> result = embeddingStore.search(
+                EmbeddingSearchRequest.builder()
+                        .queryEmbedding(queryEmbedding)
+                        .maxResults(10)
+                        .build()
+        );
+        List<EmbeddingMatch<TextSegment>> matches = result.matches();
+        if(matches.isEmpty()){
+            return List.of();
+
+        }
+        List<Long> placeIds = matches.stream()
+                .map(m-> Long.valueOf(m.embedded().metadata().getString("placeId")))
+                .collect(Collectors.toList());
+
+        List<PlaceEmotionLibrary> places = placeEmotionLibraryRepository.findAllById(placeIds);
+
+        //按向量相似度顺序进行排列
+        Map<Long,Double> similarityMap = new LinkedHashMap<>();
+        for(EmbeddingMatch<TextSegment> match:matches){
+            Long placeId = Long.valueOf(match.embedded().metadata().getString("placeId"));
+            similarityMap.putIfAbsent(placeId,match.score());
+        }
+
+        //构建PlaceCard
+        List<PlaceCard> cards = new ArrayList<>();
+        for(Long placeId: similarityMap.keySet()){
+            PlaceEmotionLibrary place = places.stream()
+                    .filter(p->p.getId().equals(placeId))
+                    .findFirst()
+                    .orElse(null);
+
+            if(place!=null){
+                double distance = calculateDistance(
+                        latitude.doubleValue(),
+                        longitude.doubleValue(),place.getLatitude().doubleValue(),
+                        place.getLongitude().doubleValue()
+                );
+                if(distance<=5.0){
+                    PlaceCard card = getPlaceCard(query,place,distance);
+                    card.setMatchType("vector_match");
+                    card.setMatchReason("与描述的相似");
+                    cards.add(card);
+                }
+            }
+        }
+        return cards.stream().limit(3).collect(Collectors.toList());
     }
 
 }
