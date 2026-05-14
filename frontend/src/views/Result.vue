@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { chat } from '../api/index';
 
 const props = defineProps({
@@ -13,37 +13,97 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['select-place']);
+const emit = defineEmits(['select-place', 'update-results']);
 const userInput = ref('');
+const messages = ref([]);
+const chatContainer = ref(null);
+const isTyping = ref(false);
 
-const handleSend = async () => {
-  if (!userInput.value.trim()) return;
-  const message = userInput.value;
-  userInput.value = '';
-  
-  console.log('Sending message:', message);
-  try {
-    const res = await chat({
-      userInput: message,
-      enableStream: false
+// 初始化第一条 AI 消息
+onMounted(() => {
+  if (props.understanding) {
+    messages.value.push({
+      role: 'ai',
+      content: props.understanding
     });
-    
-    if (res.code === 0) {
-      console.log('AI Response:', res.data);
-      // In a real app, we might update the places or add a message to a list
-    }
-  } catch (err) {
-    console.log('Chat failed', err);
+  }
+});
+
+const scrollToBottom = async () => {
+  await nextTick();
+  if (chatContainer.value) {
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
   }
 };
 
+const handleSend = async () => {
+  if (!userInput.value.trim() || isTyping.value) return;
+  
+  const text = userInput.value;
+  userInput.value = '';
+  
+  // 添加用户消息
+  messages.value.push({
+    role: 'user',
+    content: text
+  });
+  scrollToBottom();
+  
+  isTyping.value = true;
+  
+  try {
+    const res = await chat({
+      userInput: text,
+      enableStream: false
+    });
+    
+    if (res.code === 200) {
+      // 添加 AI 回复
+      messages.value.push({
+        role: 'ai',
+        content: res.data.understanding
+      });
+      
+      // 如果 AI 返回了新的地点，通知父组件更新列表
+      if (res.data.emotionMatches && res.data.emotionMatches.length > 0) {
+        emit('update-results', res.data.emotionMatches);
+      }
+    }
+  } catch (err) {
+    console.log('Chat failed', err);
+    messages.value.push({
+      role: 'ai',
+      content: '抱歉，我刚才走神了，请再试一次吧。'
+    });
+  } finally {
+    isTyping.value = false;
+    scrollToBottom();
+  }
+};
 </script>
 
 <template>
   <div class="result-page">
-    <!-- AI Message -->
-    <div class="ai-message-card">
-      <p>{{ understanding || '正在为你寻找最适合的角落...' }}</p>
+    <!-- Chat Area -->
+    <div class="chat-container" ref="chatContainer">
+      <div 
+        v-for="(msg, index) in messages" 
+        :key="index" 
+        :class="['message-bubble', msg.role]"
+      >
+        <div class="avatar" v-if="msg.role === 'ai'">✨</div>
+        <div class="bubble-content">
+          {{ msg.content }}
+        </div>
+      </div>
+      
+      <!-- Typing Indicator -->
+      <div v-if="isTyping" class="message-bubble ai">
+        <div class="avatar">✨</div>
+        <div class="bubble-content typing">
+          <span>.</span><span>.</span><span>.</span>
+        </div>
+      </div>
     </div>
 
     <!-- AI Web Search Results Header -->
@@ -108,37 +168,102 @@ const handleSend = async () => {
 
 <style scoped>
 .result-page {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 160px); /* 减去顶部和底部导航高度 */
+  background: #fcfbf9;
+}
+
+.chat-container {
+  flex: 1;
+  overflow-y: auto;
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-bottom: 180px; /* 为固定的输入框留出空间 */
+  gap: 20px;
 }
 
-.ai-message-card {
+.message-bubble {
+  display: flex;
+  gap: 12px;
+  max-width: 85%;
+}
+
+.message-bubble.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-bubble.ai {
+  align-self: flex-start;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
   background: white;
-  padding: 24px;
-  border-radius: 24px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(0, 0, 0, 0.02);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
-.ai-message-card p {
-  font-size: 1.1rem;
+.bubble-content {
+  padding: 14px 18px;
+  border-radius: 20px;
+  font-size: 1rem;
   line-height: 1.5;
-  color: var(--text-main);
-  font-weight: 400;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
 }
 
-.section-header {
-  margin-top: 8px;
+.user .bubble-content {
+  background: #5a6b63;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.ai .bubble-content {
+  background: white;
+  color: var(--text-main);
+  border-bottom-left-radius: 4px;
+}
+
+.typing span {
+  animation: blink 1.4s infinite both;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+  0% { opacity: .2; }
+  20% { opacity: 1; }
+  100% { opacity: .2; }
+}
+
+/* Places Section */
+.places-section {
+  padding: 0 24px 180px;
+  flex-shrink: 0;
 }
 
 .section-title {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 400;
+  margin: 32px 0 16px;
   letter-spacing: 0.02em;
+}
+
+.section-title span {
+  opacity: 0.6;
+  font-size: 0.75rem;
 }
 
 .results-list {

@@ -1,57 +1,29 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { getDiscoveryPlaces } from '../api/index';
 
 const emit = defineEmits(['explore-mood', 'select-place']);
 
-const categories = ['全部', '安静', '治愈', '想独处'];
-const activeCategory = ref('全部');
+const places = ref([]);
+const loading = ref(false);
 
-const places = [
-  {
-    placeId: 1,
-    placeName: '南头古城后院',
-    distance: '1.2km',
-    imageUrl: new URL('../assets/img/bg.png', import.meta.url).href,
-    status: '记忆中',
-    moodTags: ['#隐秘', '#绿意'],
-    oneSentence: "藏在深巷里的院子，满墙的绿植能瞬间让你平静下来。",
-    crowdLevel: '极少',
-    tips: '巷子较深，建议开启地图导航，注意防蚊。'
-  },
-  {
-    placeId: 2,
-    placeName: '华侨城旧书店',
-    distance: '3.5km',
-    imageUrl: new URL('../assets/img/bg.png', import.meta.url).href,
-    status: '记忆中',
-    moodTags: ['#安静', '#独处'],
-    oneSentence: "这里的旧书香和木质桌椅营造了极佳的阅读氛围，适合一个人安静呆着。",
-    crowdLevel: '少',
-    tips: '建议自带水杯，书店内的座位比较紧俏。'
-  },
-  {
-    placeId: 3,
-    placeName: '盐田海滨栈道',
-    distance: '8.7km',
-    imageUrl: new URL('../assets/img/bg.png', import.meta.url).href,
-    status: '待物探',
-    moodTags: ['#开阔', '#海风'],
-    oneSentence: "面对大海，所有的烦恼都会烟消云散。",
-    crowdLevel: '多',
-    tips: '风大注意保暖，建议带个充电宝。'
-  },
-  {
-    placeId: 4,
-    placeName: '蛇口老街巷弄',
-    distance: '4.2km',
-    imageUrl: new URL('../assets/img/bg.png', import.meta.url).href,
-    status: '记忆中',
-    moodTags: ['#怀旧', '#烟火'],
-    oneSentence: "老深圳的味道，这里的慢节奏很治愈。",
-    crowdLevel: '一般',
-    tips: '适合下午漫步，有很多好喝的咖啡馆。'
+onMounted(() => {
+  fetchPlaces();
+});
+
+const fetchPlaces = async () => {
+  loading.value = true;
+  try {
+    const res = await getDiscoveryPlaces();
+    if (res.code === 200) {
+      places.value = res.data;
+    }
+  } catch (err) {
+    console.log('获取发现列表失败', err);
+  } finally {
+    loading.value = false;
   }
-];
+};
 </script>
 
 <template>
@@ -59,9 +31,7 @@ const places = [
     <!-- Map Exploration Card -->
     <div class="explore-map-card">
       <div class="map-preview">
-        <div class="map-tag tag-1">安静</div>
-        <div class="map-tag tag-2">放空</div>
-        <div class="map-tag tag-3">烟火气</div>
+        <!-- Tags removed for a cleaner look -->
       </div>
       <button class="btn-explore-mood" @click="emit('explore-mood')">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -72,21 +42,9 @@ const places = [
       </button>
     </div>
 
-    <!-- Category Filters -->
-    <div class="filter-tabs">
-      <button 
-        v-for="cat in categories" 
-        :key="cat"
-        class="filter-tab"
-        :class="{ active: activeCategory === cat }"
-        @click="activeCategory = cat"
-      >
-        {{ cat }}
-      </button>
-    </div>
 
     <!-- Places List -->
-    <div class="places-grid">
+    <div class="places-grid" v-if="places.length > 0">
       <div 
         v-for="place in places" 
         :key="place.placeId" 
@@ -94,8 +52,10 @@ const places = [
         @click="emit('select-place', place)"
       >
         <div class="card-image-wrapper">
-          <img :src="place.imageUrl" :alt="place.placeName" class="card-img" />
-          <span class="status-badge">{{ place.status }}</span>
+          <img :src="place.imageUrl || '/images/place/default.jpg'" :alt="place.placeName" class="card-img" />
+          <span class="status-badge" :class="{ 'status-pending': place.status === '待物探' }">
+            {{ place.status }}
+          </span>
         </div>
         <div class="card-footer">
           <div class="card-title-row">
@@ -124,6 +84,13 @@ const places = [
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else-if="!loading" class="empty-discover">
+      <div class="empty-icon">🗺️</div>
+      <p>还没有发现新的角落</p>
+      <button class="btn-go-recommend" @click="emit('explore-mood')">去让 AI 推荐一个</button>
     </div>
   </div>
 </template>
@@ -156,20 +123,6 @@ const places = [
   background-size: 20px 20px;
 }
 
-.map-tag {
-  position: absolute;
-  background: white;
-  padding: 6px 14px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  color: var(--text-main);
-}
-
-.tag-1 { top: 30%; left: 40%; }
-.tag-2 { top: 60%; left: 30%; }
-.tag-3 { top: 65%; left: 55%; }
-
 .btn-explore-mood {
   background: white;
   border: none;
@@ -184,28 +137,6 @@ const places = [
   box-shadow: var(--shadow-sm);
 }
 
-.filter-tabs {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.filter-tab {
-  background: #f5f5f5;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  transition: var(--transition);
-}
-
-.filter-tab.active {
-  background: #5a6b63;
-  color: white;
-}
 
 .places-grid {
   display: flex;
@@ -237,14 +168,49 @@ const places = [
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(90, 107, 99, 0.8);
   backdrop-filter: blur(8px);
   padding: 6px 12px;
   border-radius: 12px;
   font-size: 0.75rem;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   letter-spacing: 0.05em;
+  z-index: 10;
+}
+
+.status-badge.status-pending {
+  background: rgba(255, 165, 0, 0.8); /* 橙色表示待探索 */
+}
+
+.empty-discover {
+  padding: 60px 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.empty-discover p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.btn-go-recommend {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 8px;
 }
 
 .card-title-row {
