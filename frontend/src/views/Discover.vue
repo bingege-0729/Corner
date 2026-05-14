@@ -8,48 +8,48 @@ const activeCategory = ref('全部');
 
 const places = [
   {
-    id: 1,
-    name: '南头古城后院',
+    placeId: 1,
+    placeName: '南头古城后院',
     distance: '1.2km',
-    image: new URL('../assets/img/bg.png', import.meta.url).href,
+    imageUrl: new URL('../assets/img/bg.png', import.meta.url).href,
     status: '记忆中',
-    tags: ['#隐秘', '#绿意'],
-    reason: "藏在深巷里的院子，满墙的绿植能瞬间让你平静下来。",
-    flow: '极少',
-    advice: '巷子较深，建议开启地图导航，注意防蚊。'
+    moodTags: ['#隐秘', '#绿意'],
+    oneSentence: "藏在深巷里的院子，满墙的绿植能瞬间让你平静下来。",
+    crowdLevel: '极少',
+    tips: '巷子较深，建议开启地图导航，注意防蚊。'
   },
   {
-    id: 2,
-    name: '华侨城旧书店',
+    placeId: 2,
+    placeName: '华侨城旧书店',
     distance: '3.5km',
-    image: new URL('../assets/img/bg.png', import.meta.url).href,
+    imageUrl: new URL('../assets/img/bg.png', import.meta.url).href,
     status: '记忆中',
-    tags: ['#安静', '#独处'],
-    reason: "这里的旧书香和木质桌椅营造了极佳的阅读氛围，适合一个人安静呆着。",
-    flow: '少',
-    advice: '建议自带水杯，书店内的座位比较紧俏。'
+    moodTags: ['#安静', '#独处'],
+    oneSentence: "这里的旧书香和木质桌椅营造了极佳的阅读氛围，适合一个人安静呆着。",
+    crowdLevel: '少',
+    tips: '建议自带水杯，书店内的座位比较紧俏。'
   },
   {
-    id: 3,
-    name: '盐田海滨栈道',
+    placeId: 3,
+    placeName: '盐田海滨栈道',
     distance: '8.7km',
-    image: new URL('../assets/img/bg.png', import.meta.url).href,
+    imageUrl: new URL('../assets/img/bg.png', import.meta.url).href,
     status: '待物探',
-    tags: ['#开阔', '#海风'],
-    reason: "面对大海，所有的烦恼都会烟消云散。",
-    flow: '多',
-    advice: '风大注意保暖，建议带个充电宝。'
+    moodTags: ['#开阔', '#海风'],
+    oneSentence: "面对大海，所有的烦恼都会烟消云散。",
+    crowdLevel: '多',
+    tips: '风大注意保暖，建议带个充电宝。'
   },
   {
-    id: 4,
-    name: '蛇口老街巷弄',
+    placeId: 4,
+    placeName: '蛇口老街巷弄',
     distance: '4.2km',
-    image: new URL('../assets/img/bg.png', import.meta.url).href,
+    imageUrl: new URL('../assets/img/bg.png', import.meta.url).href,
     status: '记忆中',
-    tags: ['#怀旧', '#烟火'],
-    reason: "老深圳的味道，这里的慢节奏很治愈。",
-    flow: '一般',
-    advice: '适合下午漫步，有很多好喝的咖啡馆。'
+    moodTags: ['#怀旧', '#烟火'],
+    oneSentence: "老深圳的味道，这里的慢节奏很治愈。",
+    crowdLevel: '一般',
+    tips: '适合下午漫步，有很多好喝的咖啡馆。'
   }
 ];
 </script>
@@ -89,17 +89,17 @@ const places = [
     <div class="places-grid">
       <div 
         v-for="place in places" 
-        :key="place.id" 
+        :key="place.placeId" 
         class="discover-card"
         @click="emit('select-place', place)"
       >
         <div class="card-image-wrapper">
-          <img :src="place.image" :alt="place.name" class="card-img" />
+          <img :src="place.imageUrl" :alt="place.placeName" class="card-img" />
           <span class="status-badge">{{ place.status }}</span>
         </div>
         <div class="card-footer">
           <div class="card-title-row">
-            <h3 class="place-name">{{ place.name }}</h3>
+            <h3 class="place-name">{{ place.placeName }}</h3>
             <button class="btn-icon-only">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M19 21L12 16L5 21V5C5 4.46957 5.21071 3.96086 5.58579 3.58579C5.96086 3.21071 6.46957 3 7 3H17C17.5304 3 18.0391 3.21071 18.4142 3.58579C18.7893 3.96086 19 4.46957 19 5V21Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>

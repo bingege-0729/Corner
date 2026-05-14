@@ -192,9 +192,8 @@ const handleSend = async () => {
   bottom: 100px; /* 留出底部导航栏的高度 */
   left: 0;
   right: 0;
-  padding: 10px 24px 20px;
-  background: linear-gradient(0deg, var(--bg-main) 80%, rgba(248, 249, 250, 0));
-  backdrop-filter: blur(8px);
+  padding: 10px 24px 30px;
+  background: transparent; /* 去掉背景和渐变 */
   z-index: 100;
 }
 
