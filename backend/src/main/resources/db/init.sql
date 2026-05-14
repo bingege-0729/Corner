@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS user_place_memory (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户地点记忆表';
 
 -- 插入示例标签数据
-INSERT INTO emotion_tag_dict (tag_name, category) VALUES
+INSERT INTO emotion_tag (tag_name, category) VALUES
 ('安静', '氛围'),
 ('放松', '氛围'),
 ('独处', '氛围'),
@@ -74,7 +74,7 @@ INSERT INTO emotion_tag_dict (tag_name, category) VALUES
 ('咖啡馆', '场景');
 
 -- 插入示例地点数据
-INSERT INTO place_emotion_library (place_name, address, latitude, longitude, crowd_level, best_time, one_sentence, full_description, image_url, tips) VALUES
+INSERT INTO place (place_name, address, latitude, longitude, crowd_level, best_time, one_sentence, full_description, image_url, tips) VALUES
 ('沙河公园湖边长椅', '南山区沙河西路', 22.5532, 113.9456, '低', '工作日下午', '下午三点有阳光，通常没人', '位于沙河公园北侧湖边，环境清幽，适合独自发呆或阅读。', '/images/place/shahe_changyi.jpg', '蚊虫较多，建议带驱蚊水'),
 ('南山图书馆角落', '南山区常兴路176号', 22.5331, 113.9231, '中', '全天', '靠窗位置能看到绿树', '图书馆三楼东侧有个安静的角落，靠窗可以看到外面的绿树，非常适合静心阅读。', '/images/place/nanshan_library.jpg', '需要保持安静，手机调静音'),
 ('华侨城创意园咖啡座', '南山区侨城东路', 22.5445, 113.9678, '中', '周末下午', '露天座位很惬意', '创意园内的露天咖啡座，周围都是绿植和艺术装置，适合放松心情。', '/images/place/oct_coffee.jpg', '周末人较多，建议早点去');

@@ -1,21 +1,28 @@
 package com.example.corner.service.impl;
 
-import com.example.corner.dto.PlaceDetailResponse;
-import com.example.corner.dto.UserHistory;
 import com.example.corner.entity.EmotionTagDict;
 import com.example.corner.entity.PlaceEmotionLibrary;
 import com.example.corner.entity.PlaceTagRelation;
+import com.example.corner.entity.UserInfo;
 import com.example.corner.entity.UserPlaceMemory;
 import com.example.corner.repository.EmotionTagDictRepository;
 import com.example.corner.repository.PlaceEmotionLibraryRepository;
 import com.example.corner.repository.PlaceTagRelationRepository;
 import com.example.corner.repository.UserPlaceMemoryRepository;
+import com.example.corner.repository.UserInfoRepository;
 import com.example.corner.service.PlaceService;
+import com.example.corner.vo.PlaceCard;
+import com.example.corner.vo.PlaceDetailResponse;
+import com.example.corner.vo.TravelTipCard;
+import com.example.corner.vo.UserHistory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,9 +40,12 @@ public class PlaceServiceImpl implements PlaceService {
     @Autowired
     private UserPlaceMemoryRepository userPlaceMemoryRepository;
     
+    @Autowired
+    private UserInfoRepository userInfoRepository;
+    
     /**
      * 地点详情
-     */
+     **/
     @Override
     public PlaceDetailResponse getPlaceDetail(Long userId, Long placeId) {
         PlaceEmotionLibrary place = placeEmotionLibraryRepository.findById(placeId)
@@ -85,6 +95,236 @@ public class PlaceServiceImpl implements PlaceService {
     }
     
     /**
+     * 生成出行温馨提示
+     */
+    @Override
+    public TravelTipCard generateTravelTips(Long userId, Long placeId) {
+        // 1. 获取地点信息
+        PlaceEmotionLibrary place = placeEmotionLibraryRepository.findById(placeId)
+                .orElseThrow(() -> new RuntimeException("地点不存在"));
+        
+        // 2. 获取用户当前位置
+        UserInfo user = userInfoRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        
+        // 3. 计算距离
+        String distanceText = "未知";
+        if (user.getLatitude() != null && user.getLongitude() != null 
+                && place.getLatitude() != null && place.getLongitude() != null) {
+            double distance = calculateDistance(
+                    user.getLatitude().doubleValue(), user.getLongitude().doubleValue(),
+                    place.getLatitude().doubleValue(), place.getLongitude().doubleValue()
+            );
+            distanceText = String.format("%.1f公里", distance);
+        }
+        
+        // 4. 构建提示卡片
+        TravelTipCard tipCard = new TravelTipCard();
+        tipCard.setPlaceId(place.getId());
+        tipCard.setPlaceName(place.getPlaceName());
+        tipCard.setAddress(place.getAddress());
+        tipCard.setDistanceText(distanceText);
+        
+        // 5. 生成天气提示（简化版，实际可接入天气API）
+        tipCard.setWeatherTip(generateWeatherTip());
+        
+        // 6. 生成准备事项提示
+        tipCard.setPreparationTip(generatePreparationTip(place.getTips()));
+        
+        // 7. 生成AI温馨寄语
+        tipCard.setAiMessage(generateAiMessage(place, LocalDateTime.now()));
+        
+        return tipCard;
+    }
+    
+    /**
+     * 生成天气提示
+     */
+    private String generateWeatherTip() {
+        // TODO: 接入实时天气API
+        return "建议出发前查看天气预报，做好相应准备 ☀️";
+    }
+    
+    /**
+     * 生成准备事项提示
+     */
+    private String generatePreparationTip(String tips) {
+        if (tips == null || tips.isEmpty()) {
+            return "无需特殊准备，轻松出发即可";
+        }
+        return "温馨提示：" + tips;
+    }
+    
+    /**
+     * 生成AI温馨寄语
+     */
+    private String generateAiMessage(PlaceEmotionLibrary place, LocalDateTime now) {
+        int hour = now.getHour();
+        String timeGreeting;
+        
+        if (hour < 6) {
+            timeGreeting = "夜深了";
+        } else if (hour < 9) {
+            timeGreeting = "早上好";
+        } else if (hour < 12) {
+            timeGreeting = "上午好";
+        } else if (hour < 14) {
+            timeGreeting = "中午好";
+        } else if (hour < 18) {
+            timeGreeting = "下午好";
+        } else if (hour < 22) {
+            timeGreeting = "晚上好";
+        } else {
+            timeGreeting = "夜深了";
+        }
+        
+        return String.format("%s！%s是一个不错的选择，希望你能在那里找到属于自己的角落 🌟",
+                timeGreeting, place.getPlaceName());
+    }
+    
+    /**
+     * 计算两点间距离（Haversine公式）
+     */
+    private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+        final int R = 6371; // 地球半径（公里）
+        
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lngDistance = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        
+        return R * c;
+    }
+    
+    /**
+     * 切换收藏状态（收藏/取消收藏）
+     */
+    @Override
+    @Transactional
+    public void toggleBookmark(Long userId, Long placeId) {
+        Optional<UserPlaceMemory> memoryOpt = userPlaceMemoryRepository
+                .findByUserIdAndPlaceId(userId, placeId);
+        
+        if (memoryOpt.isPresent()) {
+            // 如果已存在，检查是否是收藏状态
+            UserPlaceMemory memory = memoryOpt.get();
+            if ("BOOKMARKED".equals(memory.getInteractionType())) {
+                // 取消收藏：删除记录
+                userPlaceMemoryRepository.delete(memory);
+            } else {
+                // 更新为收藏状态
+                memory.setInteractionType("BOOKMARKED");
+                memory.setUpdatedAt(LocalDateTime.now());
+                userPlaceMemoryRepository.save(memory);
+            }
+        } else {
+            // 新建收藏记录
+            UserPlaceMemory memory = new UserPlaceMemory();
+            memory.setUserId(userId);
+            memory.setPlaceId(placeId);
+            memory.setInteractionType("BOOKMARKED");
+            memory.setVisitedAt(LocalDate.now());
+            memory.setCreatedAt(LocalDateTime.now());
+            memory.setUpdatedAt(LocalDateTime.now());
+            userPlaceMemoryRepository.save(memory);
+        }
+    }
+    
+    /**
+     * 获取用户收藏的地点列表
+     */
+    @Override
+    public List<PlaceCard> getBookmarkedPlaces(Long userId) {
+        // 查询所有收藏的地点
+        List<UserPlaceMemory> bookmarkedMemories = userPlaceMemoryRepository
+                .findByUserIdAndInteractionType(userId, "BOOKMARKED");
+        
+        // 获取地点ID列表
+        List<Long> placeIds = bookmarkedMemories.stream()
+                .map(UserPlaceMemory::getPlaceId)
+                .collect(Collectors.toList());
+        
+        if (placeIds.isEmpty()) {
+            return List.of();
+        }
+        
+        // 查询地点详情
+        List<PlaceEmotionLibrary> places = placeEmotionLibraryRepository.findAllById(placeIds);
+        
+        // 构建 PlaceCard 列表
+        return places.stream().map(place -> {
+            PlaceCard card = new PlaceCard();
+            card.setPlaceId(place.getId());
+            card.setPlaceName(place.getPlaceName());
+            card.setAddress(place.getAddress());
+            card.setImageUrl(place.getImageUrl());
+            card.setOneSentence(place.getOneSentence());
+            card.setCrowdLevel(place.getCrowdLevel());
+            
+            // 获取地点的情绪标签
+            List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(place.getId());
+            List<String> moodTags = relations.stream()
+                    .map(relation -> emotionTagDictRepository.findById(relation.getTagId()))
+                    .filter(Optional::isPresent)
+                    .map(opt -> opt.get().getTagName())
+                    .collect(Collectors.toList());
+            card.setMoodTags(moodTags);
+            
+            return card;
+        }).collect(Collectors.toList());
+    }
+    
+    /**
+     * 获取用户去过的地点及对应心情（用于地图展示）
+     */
+    @Override
+    public List<Map<String, Object>> getVisitedPlacesWithMood(Long userId) {
+        // 1. 查询所有去过的地点记录（interaction_type = 'VISITED'）
+        List<UserPlaceMemory> visitedMemories = userPlaceMemoryRepository
+                .findByUserIdAndInteractionType(userId, "VISITED");
+        
+        if (visitedMemories.isEmpty()) {
+            return List.of();
+        }
+        
+        // 2. 构建结果列表
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        for (UserPlaceMemory memory : visitedMemories) {
+            // 获取地点信息
+            Optional<PlaceEmotionLibrary> placeOpt = placeEmotionLibraryRepository.findById(memory.getPlaceId());
+            if (placeOpt.isEmpty()) {
+                continue;
+            }
+            
+            PlaceEmotionLibrary place = placeOpt.get();
+            
+            // 获取该地点的主要情绪标签（取第一个）
+            List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(place.getId());
+            String moodTag = null;
+            if (!relations.isEmpty()) {
+                Optional<EmotionTagDict> tagOpt = emotionTagDictRepository.findById(relations.get(0).getTagId());
+                moodTag = tagOpt.map(EmotionTagDict::getTagName).orElse(null);
+            }
+            
+            // 构建地图展示数据
+            Map<String, Object> placeData = new HashMap<>();
+            placeData.put("placeId", place.getId());
+            placeData.put("placeName", place.getPlaceName());
+            placeData.put("latitude", place.getLatitude());
+            placeData.put("longitude", place.getLongitude());
+            placeData.put("moodTag", moodTag); // 当时的心情标签
+            placeData.put("visitedAt", memory.getVisitedAt() != null ? memory.getVisitedAt().toString() : null);
+            placeData.put("address", place.getAddress());
+            
+            result.add(placeData);
+        }
+        
+        return result;
+    }
+
      * 获取所有地点（包含标签信息）
      */
     @Override

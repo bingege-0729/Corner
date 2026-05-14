@@ -223,7 +223,7 @@ redis-cli ping
 LLM_API_KEY=your_deepseek_api_key_here
 ```
 
-5. 修改 JWT 密钥（至少32字符）：
+4. 修改 JWT 密钥（至少32字符）：
 ```yaml
 jwt:
   secret: your-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm

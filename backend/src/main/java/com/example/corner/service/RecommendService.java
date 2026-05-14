@@ -1,7 +1,7 @@
 package com.example.corner.service;
 
 import com.example.corner.dto.RecommendRequest;
-import com.example.corner.dto.RecommendResponse;
+import com.example.corner.vo.RecommendResponse;
 
 public interface RecommendService {
     
