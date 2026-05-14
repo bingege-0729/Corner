@@ -1,5 +1,6 @@
 package com.example.corner.service;
 
+import com.example.corner.entity.PlaceEmotionLibrary;
 import com.example.corner.vo.PlaceCard;
 import com.example.corner.vo.PlaceDetailResponse;
 import com.example.corner.vo.TravelTipCard;
@@ -35,4 +36,6 @@ public interface PlaceService {
      * @return 去过的地点列表，每个地点包含：placeId, placeName, latitude, longitude, moodTag, visitedAt
      */
     List<Map<String, Object>> getVisitedPlacesWithMood(Long userId);
+
+    List<PlaceEmotionLibrary> getAllPlacesWithTags();
 }

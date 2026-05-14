@@ -1,24 +1,20 @@
 package com.example.corner.service.aiService;
 
 import com.example.corner.entity.UserPlaceMemory;
-import com.example.corner.vo.RecommendResponse;
 
+import com.example.corner.vo.RecommendResponse;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.spring.AiService;
-import dev.langchain4j.service.spring.AiServiceWiringMode;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
 
 @AiService(
-        wiringMode = AiServiceWiringMode.EXPLICIT,
         chatModel = "openAiChatModel",
         tools = "recommendAITools",
-        chatMemoryProvider = "redisChatMemoryProvider"
-
-
+        chatMemoryProvider = "redisChatMemoryRepository"
 )
 public interface RecommendAIService {
     /**
@@ -85,15 +81,14 @@ public interface RecommendAIService {
 
     /**
      * 根据用户情绪、输入和位置信息，调用工具获取推荐地点
-     * @param userId    用户ID
+
      * @param userInput 用户输入（包含情绪、位置等信息）
-     * @param latitude  用户纬度
-     * @param longitude 用户经度
+
      * @param memoryId  用户记忆ID
      * @return 推荐响应（包含LLM理解和匹配的地点列表）
      */
     @SystemMessage("""
-            你是一个地点推荐助手。当用户表达了任何想出门、想去某个地方的意图时，立即调用 getSuitablePlaceBymoodAndsave 工具。
+            你是一个地点推荐助手。根据用户提供的情绪、位置和偏好，调用合适的工具来推荐地点。
             
             你可以使用以下工具：
             - getSuitablePlaceByMoodAndLocation: 根据用户情绪、收藏记录和位置，推荐符合条件的地点
@@ -110,7 +105,7 @@ public interface RecommendAIService {
             
             emotionMatches 字段应该包含工具返回的地点列表。
             """)
-    public RecommendResponse getRecommend(@UserMessage Long userId, @UserMessage String userInput, @UserMessage java.math.BigDecimal latitude, @UserMessage java.math.BigDecimal longitude, @MemoryId String memoryId);
+    public RecommendResponse getRecommend(@UserMessage String userInput ,@MemoryId String memoryId);
 
 
 }
