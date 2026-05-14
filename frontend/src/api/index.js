@@ -26,3 +26,7 @@ export const getVisitedWithMood = () => axios.get('/memory/visited-with-mood')
 
 // Location
 export const updateLocation = (params) => axios.post('/location/update', params)
+
+// Discovery
+export const recordExploration = (placeCard) => axios.post('/memory/explore', placeCard)
+export const getDiscoveryPlaces = () => axios.get('/memory/discovery')

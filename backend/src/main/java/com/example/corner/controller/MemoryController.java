@@ -57,4 +57,27 @@ public class MemoryController {
         List<Map<String, Object>> visitedPlaces = placeService.getVisitedPlacesWithMood(userId);
         return Result.success(visitedPlaces);
     }
+
+    /**
+     * 记录用户探索意向（点击一键出行）
+     */
+    @PostMapping("/explore")
+    public Result<Void> recordExploration(HttpServletRequest request,
+                                          @RequestBody PlaceCard placeCard) {
+        Long userId = (Long) request.getAttribute("userId");
+        log.info("记录探索意向: userId={}, placeId={}", userId, placeCard.getPlaceId());
+        placeService.recordExploration(userId, placeCard.getPlaceId(), placeCard);
+        return Result.success();
+    }
+
+    /**
+     * 获取“发现”页面的地点列表
+     */
+    @GetMapping("/discovery")
+    public Result<List<PlaceCard>> getDiscoveryPlaces(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        log.info("获取发现列表: userId={}", userId);
+        List<PlaceCard> places = placeService.getDiscoveryPlaces(userId);
+        return Result.success(places);
+    }
 }
