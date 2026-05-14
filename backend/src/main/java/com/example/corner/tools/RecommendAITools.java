@@ -45,7 +45,7 @@ public class RecommendAITools {
      * @param longitude 用户位置经度
      * @return 符合条件的地点列表（按优先级和距离排序，最多3个）
      */
-    @Tool(name = "根据用户提供的情绪、用户收藏的地方和用户所在经纬度选择合适的地点")
+    @Tool("getSuitablePlaceByMoodAndLocation")
     public List<PlaceCard> getSuitablePlaceBymoodAndsave(
             @P("用户情绪标签：如安静、治愈") String mood,
             @P("用户ID") Long userId,
