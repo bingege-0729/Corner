@@ -52,22 +52,21 @@ public class RecommendServiceImpl implements RecommendService {
         );
     }
 
-    private void recordUserMood(Long userId, RecommendRequest request) {
-        if (request.getMood() == null || request.getMood().isEmpty()) return;
+        RecommendResponse response = recommendAIService.getRecommend(userMessage, USER_MEMORY_KEY_PREFIX + userId);
 
-        String[] tags = request.getMood().split(",");
-        Set<String> categories = new HashSet<>();
+        // 后处理：清理 understanding 字段，确保不包含思考过程
+        if (response != null && response.getUnderstanding() != null) {
+            String understanding = response.getUnderstanding();
 
-        for (String tag : tags) {
-            tag = tag.trim();
-            // 映射逻辑
-            if (tag.contains("烦闷") || tag.contains("枯竭")) {
-                categories.add("烦闷时");
-            } else if (tag.contains("安静")) {
-                categories.add("平静");
-            } else if (tag.contains("想被治愈") || tag.contains("烟火气")) {
-                categories.add("好心情");
-            }
+            // 移除常见的思考过程关键词
+            understanding = understanding
+                .replaceAll("(?m)^让我.*?\\n", "")  // 移除“让我...”开头的行
+                .replaceAll("(?m)^首先.*?\\n", "")  // 移除“首先...”开头的行
+                .replaceAll("(?m)^我需要.*?\\n", "")  // 移除“我需要...”开头的行
+                .replaceAll("根据工具返回.*?[,，]", "")  // 移除“根据工具返回”
+                .trim();
+
+            response.setUnderstanding(understanding);
         }
 
         // 保存心情记录
