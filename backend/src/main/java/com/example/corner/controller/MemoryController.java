@@ -1,39 +1,59 @@
 package com.example.corner.controller;
 
 import com.example.corner.common.Result;
-import com.example.corner.dto.FeedbackRequest;
-import com.example.corner.dto.MemoryListResponse;
-import com.example.corner.service.MemoryService;
+import com.example.corner.service.PlaceService;
+import com.example.corner.vo.PlaceCard;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 用户收藏
+ */
+@Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/memory")
 public class MemoryController {
     
     @Autowired
-    private MemoryService memoryService;
+    private PlaceService placeService;
     
     /**
-     * 接口4：推荐反馈
+     * 切换地点收藏状态（收藏/取消收藏）
      */
-    @PostMapping("/place/feedback")
-    public Result<Void> feedback(HttpServletRequest request, 
-                                       @RequestBody FeedbackRequest feedbackRequest) {
+    @PostMapping("/{placeId}/bookmark")
+    public Result<Void> toggleBookmark(HttpServletRequest request,
+                                       @PathVariable Long placeId) {
         Long userId = (Long) request.getAttribute("userId");
-        memoryService.feedback(userId, feedbackRequest);
+        log.info("用户切换收藏状态: userId={}, placeId={}", userId, placeId);
+        placeService.toggleBookmark(userId, placeId);
         return Result.success();
+    }
+
+    /**
+     * 获取用户收藏的地点列表
+     */
+    @GetMapping("/bookmarks")
+    public Result<List<PlaceCard>> getBookmarks(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        log.info("获取用户收藏列表: userId={}", userId);
+        List<PlaceCard> bookmarks = placeService.getBookmarkedPlaces(userId);
+        return Result.success(bookmarks);
     }
     
     /**
-     * 接口5：我的记忆列表
+     * 获取用户去过的地点及对应心情（用于地图展示）
      */
-    @GetMapping("/memory/list")
-    public Result<MemoryListResponse> getMemoryList(HttpServletRequest request,
-                                                          @RequestParam(required = false) String type) {
+    @GetMapping("/visited-with-mood")
+    public Result<List<Map<String, Object>>> getVisitedPlacesWithMood(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
-        MemoryListResponse response = memoryService.getMemoryList(userId, type);
-        return Result.success(response);
+        log.info("获取用户去过的地点及心情: userId={}", userId);
+        
+        List<Map<String, Object>> visitedPlaces = placeService.getVisitedPlacesWithMood(userId);
+        return Result.success(visitedPlaces);
     }
 }

@@ -1,6 +1,6 @@
 package com.example.corner.service;
 
-import com.example.corner.dto.TagResponse;
+import com.example.corner.vo.TagResponse;
 
 import java.util.List;
 

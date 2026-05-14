@@ -1,7 +1,8 @@
-package com.example.corner.dto;
+package com.example.corner.vo;
 
 import lombok.Data;
 
+// 标签响应
 @Data
 public class TagResponse {
     private Long id;

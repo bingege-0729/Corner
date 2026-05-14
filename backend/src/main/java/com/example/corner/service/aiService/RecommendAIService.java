@@ -1,8 +1,8 @@
 package com.example.corner.service.aiService;
 
-import com.example.corner.dto.RecommendResponse;
 import com.example.corner.entity.UserPlaceMemory;
 
+import com.example.corner.vo.RecommendResponse;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
@@ -81,10 +81,9 @@ public interface RecommendAIService {
 
     /**
      * 根据用户情绪、输入和位置信息，调用工具获取推荐地点
-     * @param userId    用户ID
+
      * @param userInput 用户输入（包含情绪、位置等信息）
-     * @param latitude  用户纬度
-     * @param longitude 用户经度
+
      * @param memoryId  用户记忆ID
      * @return 推荐响应（包含LLM理解和匹配的地点列表）
      */
@@ -106,7 +105,7 @@ public interface RecommendAIService {
             
             emotionMatches 字段应该包含工具返回的地点列表。
             """)
-    public RecommendResponse getRecommend(@UserMessage Long userId, @UserMessage String userInput, @UserMessage java.math.BigDecimal latitude, @UserMessage java.math.BigDecimal longitude, @MemoryId String memoryId);
+    public RecommendResponse getRecommend(@UserMessage String userInput ,@MemoryId String memoryId);
 
 
 }

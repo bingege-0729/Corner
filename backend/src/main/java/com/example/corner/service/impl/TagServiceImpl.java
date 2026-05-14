@@ -1,9 +1,9 @@
 package com.example.corner.service.impl;
 
-import com.example.corner.dto.TagResponse;
 import com.example.corner.entity.EmotionTagDict;
 import com.example.corner.repository.EmotionTagDictRepository;
 import com.example.corner.service.TagService;
+import com.example.corner.vo.TagResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
