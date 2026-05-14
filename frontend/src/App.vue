@@ -156,7 +156,7 @@
       <main class="main-content">
         <!-- 根据 currentPage 和 activeTab 显示不同内容 -->
         <div v-if="currentPage === 'home' && activeTab === 'mood'" class="tab-page">
-          <Recommend @submit="fetchRecommend" />
+          <Recommend :tags="tagList" @submit="fetchRecommend" />
         </div>
         <div v-if="currentPage === 'discover'" class="tab-page">
           <Discover @explore-mood="activeTab = 'mood'; currentPage = 'home';" @select-place="selectPlace" />

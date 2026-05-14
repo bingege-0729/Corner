@@ -147,6 +147,13 @@ public class UserServiceImpl implements UserService {
     public UserStatsResponse getUserStats(Long userId) {
         UserStatsResponse stats = new UserStatsResponse();
         
+        // 0. 获取用户信息
+        UserInfo user = userInfoRepository.findById(userId).orElse(null);
+        if (user != null) {
+            stats.setNickname(user.getNickname());
+            stats.setAvatarUrl(user.getAvatarUrl());
+        }
+        
         // 1. 统计去过的不同地点数量（interaction_type = 'VISITED'）
         List<UserPlaceMemory> visitedMemories = userPlaceMemoryRepository
                 .findByUserIdAndInteractionType(userId, "VISITED");
@@ -165,7 +172,7 @@ public class UserServiceImpl implements UserService {
         Map<String, Integer> moodStats = new HashMap<>();
         moodStats.put("好心情", 0);
         moodStats.put("平静", 0);
-        moodStats.put("伤心", 0);
+        moodStats.put("烦闷时", 0);
         
         // 统计每个情绪的出现次数
         for (UserMoodRecord record : moodRecords) {

@@ -38,11 +38,19 @@ const fetchAITips = async () => {
   }
 };
 
+const showToast = ref(false);
+const toastMessage = ref('');
+
 const handleBookmark = async () => {
   try {
-    const res = await toggleBookmark(props.place.placeId);
+    const res = await toggleBookmark(props.place.placeId, props.place);
     if (res.code === 200) {
       isBookmarked.value = !isBookmarked.value;
+      toastMessage.value = isBookmarked.value ? '已存入记忆 ✨' : '已取消收藏';
+      showToast.value = true;
+      setTimeout(() => {
+        showToast.value = false;
+      }, 1500);
     }
   } catch (err) {
     console.log('收藏操作失败', err);
@@ -134,6 +142,13 @@ const handleBookmark = async () => {
         带我去这 (一键成行)
       </button>
     </div>
+
+    <!-- Toast Notification -->
+    <Transition name="toast">
+      <div v-if="showToast" class="toast-container">
+        {{ toastMessage }}
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -291,5 +306,31 @@ const handleBookmark = async () => {
   justify-content: center;
   gap: 10px;
   box-shadow: 0 8px 20px rgba(90, 107, 99, 0.3);
+}
+
+/* Toast Styles */
+.toast-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 20px;
+  z-index: 1000;
+  font-size: 0.9rem;
+  backdrop-filter: blur(5px);
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -40%);
 }
 </style>

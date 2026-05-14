@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ public class RecommendAITools {
     @Autowired
     private EmbeddingModel embeddingModel;
 
-    @Value("${TAVILY_API_KEY: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}")
+    @Value("${langchain4j.web-search-engine.tavily.api-key}")
     private String tavilyApiKey;
     
     @Value("${baidu.map.api-key:Fj18RcqBdN8w1lbYY7Rs32Kx6pW1Heru}")
@@ -380,7 +381,8 @@ public class RecommendAITools {
             @P("用户纬度") BigDecimal latitude,
             @P("用户经度") BigDecimal longitude) {
 
-        RestClient client = RestClient.create("https://api.tavily.com");
+        System.out.println("AI 正在触发联网搜索，关键词: " + query);
+        org.springframework.web.client.RestClient client = org.springframework.web.client.RestClient.create("https://api.tavily.com");
 
         // 构建搜索查询，确保包含地理位置信息
         String searchQuery = query;
@@ -443,7 +445,6 @@ public class RecommendAITools {
             // LLM 后处理：生成个性化推荐理由
             cards = enhanceWithLLM(cards, query, latitude, longitude);
         }
-        return cards;
     }
     
     /**

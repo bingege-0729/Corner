@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { getTravelTips } from '../api/index';
 
 const emit = defineEmits(['back', 'save-memory']);
 
@@ -10,7 +11,28 @@ const props = defineProps({
   }
 });
 
-const bgImage = new URL('../assets/img/bg.png', import.meta.url).href;
+const travelTips = ref({
+  weatherTip: '正在获取天气...',
+  preparationTip: '正在获取建议...',
+  aiMessage: ''
+});
+
+onMounted(() => {
+  fetchTips();
+});
+
+const fetchTips = async () => {
+  try {
+    const res = await getTravelTips(props.place.placeId);
+    if (res.code === 200) {
+      travelTips.value = res.data;
+    }
+  } catch (err) {
+    console.log('获取建议失败', err);
+  }
+};
+
+const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.meta.url).href;
 </script>
 
 <template>
@@ -25,7 +47,7 @@ const bgImage = new URL('../assets/img/bg.png', import.meta.url).href;
 
         <!-- Map Card -->
         <div class="map-card">
-          <img :src="bgImage" alt="Map View" class="map-image" />
+          <img :src="place.imageUrl || bgImage" alt="Map View" class="map-image" />
         </div>
 
         <!-- Reminders -->
@@ -38,7 +60,7 @@ const bgImage = new URL('../assets/img/bg.png', import.meta.url).href;
             </div>
             <div class="reminder-content">
               <h4>天气提醒</h4>
-              <p>可能会下雨，记得带把伞 ☔</p>
+              <p>{{ travelTips.weatherTip }}</p>
             </div>
           </div>
 
@@ -49,8 +71,8 @@ const bgImage = new URL('../assets/img/bg.png', import.meta.url).href;
               </svg>
             </div>
             <div class="reminder-content">
-              <h4>神秘彩蛋</h4>
-              <p>大树附近藏着一枚印章，快去找找看吧！</p>
+              <h4>出行建议</h4>
+              <p>{{ travelTips.preparationTip }}</p>
             </div>
           </div>
         </div>
