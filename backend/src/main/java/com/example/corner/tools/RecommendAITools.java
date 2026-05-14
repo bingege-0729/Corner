@@ -374,7 +374,8 @@ public class RecommendAITools {
             @P("用户纬度") BigDecimal latitude,
             @P("用户经度") BigDecimal longitude) {
 
-        RestClient client = RestClient.create("https://api.tavily.com");
+        System.out.println("AI 正在触发联网搜索，关键词: " + query);
+        org.springframework.web.client.RestClient client = org.springframework.web.client.RestClient.create("https://api.tavily.com");
 
         Map<String, Object> body = Map.of(
                 "api_key", tavilyApiKey,
