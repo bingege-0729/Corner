@@ -64,7 +64,13 @@ public class RecommendAITools {
 
     @Value("${langchain4j.web-search-engine.tavily.api-key}")
     private String tavilyApiKey;
-
+    
+    @Value("${baidu.map.api-key:Fj18RcqBdN8w1lbYY7Rs32Kx6pW1Heru}")
+    private String baiduMapApiKey;
+    
+    @Autowired
+    private OpenAiChatModel chatModel;
+    
     // 推荐结果缓存Key前缀
     private static final String RECOMMEND_CACHE_KEY = "recommend_cache:";
 
@@ -370,51 +376,166 @@ public class RecommendAITools {
 
     @Tool("联网搜索地点，在其他工具无法满足用户需求时使用")
     public List<PlaceCard> searchWeb(
-            @P("搜索关键词") String query,
+            @P("搜索关键词，应包含地点/城市信息，如'深圳安静的书店'或'北京咖啡馆'") String query,
             @P("用户纬度") BigDecimal latitude,
             @P("用户经度") BigDecimal longitude) {
 
         System.out.println("AI 正在触发联网搜索，关键词: " + query);
         org.springframework.web.client.RestClient client = org.springframework.web.client.RestClient.create("https://api.tavily.com");
 
+        // 构建搜索查询，确保包含地理位置信息
+        String searchQuery = query;
+        // 如果 query 中不包含常见城市关键词，可以添加提示
+        if (!query.matches(".*[北上广深京津沪渝港澳台苏浙鲁粤].*")) {
+            searchQuery = query + " 附近";
+        }
+
         Map<String, Object> body = Map.of(
                 "api_key", tavilyApiKey,
-                "query", query + " 深圳 推荐",
+                "query", searchQuery + " 推荐 地点",
                 "search_depth", "basic",
                 "max_results", 3
         );
 
+        Map<String, Object> resp = client.post()
+                .uri("/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(Map.class);
+
+        List<PlaceCard> cards = new ArrayList<>();
+        List<Map<String, String>> results = (List<Map<String, String>>) resp.get("results");
+
+        if (results != null) {
+            for (Map<String, String> item : results) {
+                PlaceCard card = new PlaceCard();
+                card.setPlaceId(-1L); // 网络搜索结果无数据库ID
+                card.setPlaceName(item.get("title"));
+                
+                String url = item.get("url");
+                card.setAddress(url);
+                
+                // 优化内容摘要
+                String content = item.get("content");
+                card.setOneSentence(content != null && content.length() > 100 ? 
+                    content.substring(0, 100) + "..." : content);
+                
+                card.setMatchType("web_search");
+                
+                // 使用默认图片（网络搜索无法获取真实图片）
+                card.setImageUrl("/images/place/default.jpg");
+                
+                // 尝试通过百度地图 Geocoding 获取距离
+                String distanceText = calculateDistanceFromAddress(url, latitude, longitude);
+                card.setDistanceText(distanceText);
+                
+                cards.add(card);
+            }
+            
+            // LLM 后处理：生成个性化推荐理由
+            cards = enhanceWithLLM(cards, query, latitude, longitude);
+        }
+    }
+    
+    /**
+     * 通过百度地图 Geocoding API 计算距离
+     */
+    private String calculateDistanceFromAddress(String address, BigDecimal userLat, BigDecimal userLng) {
+        if (userLat == null || userLng == null || address == null) {
+            return "距离需自行确认";
+        }
+        
         try {
-            Map<String, Object> resp = client.post()
-                    .uri("/search")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(Map.class);
-
-            List<PlaceCard> cards = new ArrayList<>();
-            List<Map<String, String>> results = (List<Map<String, String>>) resp.get("results");
-
-            if (results != null) {
-                for (Map<String, String> item : results) {
-                    PlaceCard card = new PlaceCard();
-                    card.setPlaceId(-1L);
-                    card.setPlaceName(item.get("title"));
-                    card.setAddress(item.get("url"));
-                    card.setOneSentence(item.get("content"));
-                    card.setMatchType("WEB_SEARCH");
-                    card.setMatchReason("智能搜索推荐");
-                    card.setImageUrl("/images/place/default.jpg");
-                    card.setDistanceText("未知距离");
-                    card.setLatitude(latitude);
-                    card.setLongitude(longitude);
-                    cards.add(card);
+            // 调用百度地图 Geocoding API
+            RestClient client = RestClient.create("https://api.map.baidu.com");
+            String url = String.format(
+                "/geocoding/v3/?address=%s&output=json&ak=%s",
+                java.net.URLEncoder.encode(address, "UTF-8"),
+                baiduMapApiKey
+            );
+            
+            Map<String, Object> response = client.get()
+                .uri(url)
+                .retrieve()
+                .body(Map.class);
+            
+            if (response != null && "0".equals(String.valueOf(response.get("status")))) {
+                Map<String, Object> result = (Map<String, Object>) response.get("result");
+                Map<String, Object> location = (Map<String, Object>) result.get("location");
+                
+                if (location != null) {
+                    double lat = ((Number) location.get("lat")).doubleValue();
+                    double lng = ((Number) location.get("lng")).doubleValue();
+                    
+                    double distance = calculateDistance(
+                        userLat.doubleValue(), userLng.doubleValue(),
+                        lat, lng
+                    );
+                    
+                    if (distance <= 5.0) {
+                        return String.format("距你%.1f公里", distance);
+                    } else {
+                        return String.format("距你%.1f公里（较远）", distance);
+                    }
                 }
             }
-            return cards;
         } catch (Exception e) {
-            System.err.println("Tavily 搜索失败: " + e.getMessage());
-            return new ArrayList<>();
+            // Geocoding 失败，返回默认提示
         }
+        
+        return "距离需自行确认";
+    }
+    
+    /**
+     * 使用 LLM 对网络搜索结果进行后处理，生成个性化推荐理由
+     */
+    private List<PlaceCard> enhanceWithLLM(List<PlaceCard> cards, String userQuery, 
+                                            BigDecimal latitude, BigDecimal longitude) {
+        if (cards.isEmpty()) {
+            return cards;
+        }
+        
+        try {
+            // 构建 LLM 请求
+            StringBuilder sb = new StringBuilder();
+            sb.append("你是一个贴心的地点推荐助手。基于以下网络搜索结果，为每个地点生成个性化的推荐理由。\n\n");
+            sb.append("用户需求：").append(userQuery).append("\n");
+            sb.append("用户位置：纬度").append(latitude).append(", 经度").append(longitude).append("\n\n");
+            sb.append("搜索结果：\n");
+            
+            for (int i = 0; i < cards.size(); i++) {
+                PlaceCard card = cards.get(i);
+                sb.append(i + 1).append(". ").append(card.getPlaceName())
+                  .append(" - ").append(card.getOneSentence()).append("\n");
+            }
+            
+            sb.append("\n请为每个地点生成一个简短的推荐理由（30字以内），说明为什么这个地点适合用户的需求。");
+            sb.append("\n返回格式：每行一个推荐理由，与上述地点顺序对应。\n");
+            
+            String prompt = sb.toString();
+            
+            // 调用 LLM
+            String response = chatModel.chat(prompt);
+            
+            // 解析 LLM 返回的推荐理由
+            String[] reasons = response.split("\n");
+            for (int i = 0; i < Math.min(reasons.length, cards.size()); i++) {
+                String reason = reasons[i].trim();
+                if (!reason.isEmpty()) {
+                    cards.get(i).setMatchReason(reason);
+                }
+            }
+            
+        } catch (Exception e) {
+            // LLM 处理失败，使用默认推荐理由
+            for (PlaceCard card : cards) {
+                if (card.getMatchReason() == null || card.getMatchReason().isEmpty()) {
+                    card.setMatchReason("根据您的需求和位置，从网络搜索到的推荐");
+                }
+            }
+        }
+        
+        return cards;
     }
 }
