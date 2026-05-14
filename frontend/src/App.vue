@@ -20,7 +20,7 @@
       chat 
     } from './api/index' 
 
-    const currentPage = ref('home'); 
+    const currentPage = ref('login'); 
     const activeTab = ref('mood'); 
     const previousPage = ref('home'); // 记录跳转前的页面
 
@@ -42,6 +42,7 @@
             const res = await login({ phone: phoneNum });
             if (res.code === 0) {
                 user_info.value = res.data;
+                localStorage.setItem('token', res.data.token);
                 currentPage.value = 'home';
             }
         } catch (err) {
@@ -65,6 +66,7 @@
     }
 
     const handleLogout = () => {
+        localStorage.removeItem('token');
         currentPage.value = 'login';
         activeTab.value = 'mood';
     }
