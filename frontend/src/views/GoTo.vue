@@ -14,6 +14,9 @@ const props = defineProps({
 const travelTips = ref({
   weatherTip: '正在获取天气...',
   preparationTip: '正在获取建议...',
+  aiMessage: ''
+});
+
 onMounted(() => {
   // 1. 直接设置预设的天气和建议
   travelTips.value = {
