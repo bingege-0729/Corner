@@ -78,22 +78,41 @@ const initMap = () => {
 };
 
 const renderPlaceMarkers = (userPoint = null) => {
+  // 清除旧覆盖物
+  map.clearOverlays();
+  if (userPoint) {
+    const userIcon = new window.BMap.Symbol(window.BMap_Symbol_SHAPE_CIRCLE, {
+      scale: 6,
+      fillColor: "#4285F4",
+      fillOpacity: 1,
+      strokeColor: "white",
+      strokeWeight: 2,
+    });
+    const userMarker = new window.BMap.Marker(userPoint, { icon: userIcon });
+    map.addOverlay(userMarker);
+  }
+
   const points = [];
   if (userPoint) points.push(userPoint);
 
   if (places.value.length > 0) {
+    console.log('正在渲染发现地点，总数:', places.value.length);
     places.value.forEach(place => {
-      if (place.latitude && place.longitude) {
-        const point = new window.BMap.Point(place.longitude, place.latitude);
+      const lng = parseFloat(place.longitude);
+      const lat = parseFloat(place.latitude);
+      
+      if (!isNaN(lng) && !isNaN(lat)) {
+        const point = new window.BMap.Point(lng, lat);
         points.push(point);
         
-        // 使用一个极小的透明圆点作为载体
+        // 使用一个极其微弱但存在的点作为 Label 的宿主
         const marker = new window.BMap.Marker(point, {
           icon: new window.BMap.Symbol(window.BMap_Symbol_SHAPE_CIRCLE, {
-            scale: 4,
-            strokeWeight: 0,
-            fillColor: "transparent",
-            fillOpacity: 0,
+            scale: 3,
+            strokeWeight: 1,
+            strokeColor: "#5a6b63",
+            fillColor: "#5a6b63",
+            fillOpacity: 0.1,
           })
         });
         map.addOverlay(marker);
@@ -107,12 +126,12 @@ const renderPlaceMarkers = (userPoint = null) => {
           
           let content = '';
           if (zoom >= 16) {
-             content = `<div class="custom-map-label expanded ${statusClass}" style="transform: translate(-50%, -100%); margin-top: -10px;">
+             content = `<div class="custom-map-label expanded ${statusClass}">
                  <span class="l-tag">#${moodTag}</span>
                  <span class="l-name">${place.placeName}</span>
                </div>`;
           } else {
-             content = `<div class="custom-map-label compact ${statusClass}" style="transform: translate(-50%, -100%); margin-top: -10px;">
+             content = `<div class="custom-map-label compact ${statusClass}">
                  <span class="l-tag">${icon} ${moodTag}</span>
                </div>`;
           }
@@ -125,25 +144,21 @@ const renderPlaceMarkers = (userPoint = null) => {
             border: 'none',
             background: 'transparent',
             padding: '0',
-            zIndex: 100
+            zIndex: 1000
           });
           
           marker.setLabel(label);
         };
 
         updateLabel();
+        // 直接在 map 上监听一次即可，不需要每个 marker 都加监听，这里为了逻辑闭环暂时保留
         map.addEventListener('zoomend', updateLabel);
-        console.log('添加标记点:', place.placeName, point);
       }
     });
 
     if (points.length > 0) {
       map.setViewport(points);
-    } else {
-      map.centerAndZoom(new window.BMap.Point(114.057868, 22.543099), 13);
     }
-  } else if (!userPoint) {
-    map.centerAndZoom(new window.BMap.Point(114.057868, 22.543099), 13);
   }
 };
 </script>
@@ -382,14 +397,17 @@ const renderPlaceMarkers = (userPoint = null) => {
   gap: 8px;
   padding: 8px 14px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   pointer-events: auto;
-  position: relative;
-  z-index: 100;
+  /* 核心定位逻辑：将 Label 的中心点对齐到坐标，并向上平移 */
+  position: absolute;
+  transform: translate(-50%, -100%);
+  margin-top: -15px;
+  z-index: 1000 !important;
 }
 
 /* 已游历：森系深绿 */
