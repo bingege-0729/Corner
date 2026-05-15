@@ -157,10 +157,10 @@ const handleAvatarUpload = async (event) => {
 
     <!-- Logout Confirmation Modal -->
     <Teleport to="body">
-      <div v-if="showLogoutConfirm" class="modal-overlay">
+      <div v-if="showLogoutConfirm" class="modal-overlay" @click.self="showLogoutConfirm = false">
         <div class="confirm-modal">
-          <div class="modal-icon">👋</div>
-          <h3>确定要退出吗？</h3>
+          <h3>退出登录</h3>
+          <p>确定要离开当前的角落吗？</p>
           <p>退出后将需要重新登录手机号以查看你的记忆</p>
           <div class="modal-actions">
             <button class="btn-modal-cancel" @click="showLogoutConfirm = false">取消</button>
@@ -335,25 +335,25 @@ const handleAvatarUpload = async (event) => {
 }
 
 .logout-section {
-  margin-top: 8px;
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 
 .btn-logout {
-  width: 100%;
-  padding: 16px;
-  border-radius: 20px;
-  border: 1px solid #eee;
-  background: white;
-  color: #ff4757;
-  font-size: 1rem;
-  font-weight: 500;
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 0.9rem;
+  font-weight: 400;
   cursor: pointer;
-  transition: var(--transition);
+  padding: 12px;
+  letter-spacing: 0.05em;
+  transition: opacity 0.2s;
 }
 
 .btn-logout:active {
-  background: #fffafa;
-  transform: scale(0.98);
+  opacity: 0.6;
 }
 
 /* Modal Styles */
@@ -374,12 +374,12 @@ const handleAvatarUpload = async (event) => {
 
 .confirm-modal {
   background: white;
-  width: 100%;
-  max-width: 320px;
-  border-radius: 32px;
-  padding: 32px;
+  width: 280px;
+  border-radius: 24px;
+  padding: 32px 24px;
   text-align: center;
-  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  animation: modalPop 0.3s ease-out;
 }
 
 @keyframes modalPop {
@@ -414,29 +414,25 @@ const handleAvatarUpload = async (event) => {
 .btn-modal-confirm {
   width: 100%;
   padding: 14px;
-  border-radius: 16px;
+  border-radius: 12px;
   border: none;
-  background: #ff4757;
+  background: #333;
   color: white;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-}
-
-.btn-modal-confirm:active {
-  background: #e04050;
-  transform: scale(0.98);
 }
 
 .btn-modal-cancel {
   width: 100%;
-  padding: 14px;
-  border-radius: 16px;
+  padding: 10px;
+  border-radius: 12px;
   border: none;
-  background: #f8f9fa;
-  color: var(--text-muted);
-  font-size: 1rem;
-  font-weight: 500;
+  background: transparent;
+  color: #bbb;
+  font-size: 0.9rem;
+  font-weight: 400;
   cursor: pointer;
+  margin-top: 4px;
 }
 </style>
