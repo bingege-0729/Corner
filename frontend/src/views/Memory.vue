@@ -113,20 +113,22 @@ const fetchMemories = async () => {
 
 .memory-info {
   padding: 16px 20px;
-  background: #f8f9fa;
+  background: white; /* 保持卡片主体白色，增加高级感 */
 }
 
 .tag-row {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .memory-tag {
-  background: #eaf2f8;
-  color: var(--text-main);
-  padding: 4px 12px;
+  background: var(--text-main); /* 使用深色背景 */
+  color: white; /* 文字改为白色 */
+  padding: 4px 14px;
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 500;
+  letter-spacing: 0.05em;
 }
 </style>
