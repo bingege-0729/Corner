@@ -49,14 +49,26 @@ const initMap = () => {
         const marker = new window.BMap.Marker(point);
         map.addOverlay(marker);
         
-        // 点击标记提示地点名
-        const label = new window.BMap.Label(place.placeName, { offset: new window.BMap.Size(20, -10) });
+        // 点击标记提示地点名和标签
+        const tagsText = place.moodTags && place.moodTags.length > 0 
+          ? ` [${place.moodTags.join(' ')}]` 
+          : '';
+        const labelContent = `${place.placeName}${tagsText}`;
+        
+        const label = new window.BMap.Label(labelContent, { 
+          offset: new window.BMap.Size(20, -10) 
+        });
+        
         label.setStyle({
-          border: 'none',
-          padding: '4px 8px',
-          borderRadius: '10px',
+          border: '1px solid var(--primary-color)',
+          padding: '6px 10px',
+          borderRadius: '12px',
           fontSize: '12px',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          color: 'var(--text-main)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          fontWeight: '500',
+          whiteSpace: 'nowrap'
         });
         marker.setLabel(label);
       }

@@ -19,17 +19,8 @@ const messages = ref([]);
 const chatContainer = ref(null);
 const isTyping = ref(false);
 
-// 监听消息变化，自动滚动到底部
-watch(messages, () => {
-  scrollToBottom();
-}, { deep: true });
-
-// 监听地点变化，内容高度增加时也滚动
-watch(() => props.places, () => {
-  scrollToBottom();
-}, { deep: true });
-
-// 监听 AI 输入状态，确保“正在输入”气泡可见
+// 移除全局 watch 自动滚动，改为在具体操作后手动控制
+// 监听 AI 输入状态，确保“正在输入”气泡可见时平滑展示
 watch(isTyping, (val) => {
   if (val) scrollToBottom();
 });
@@ -50,15 +41,8 @@ const scrollToMessage = async (index) => {
   await nextTick();
   const el = document.getElementById(`msg-${index}`);
   if (el) {
+    // 使用 scrollIntoView 并配合 CSS 的 scroll-margin-top
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } else {
-    // 兜底方案：如果没有找到 ID，则滚到底部
-    if (chatContainer.value) {
-      chatContainer.value.scrollTo({
-        top: chatContainer.value.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
   }
 };
 
@@ -78,26 +62,25 @@ const handleSend = async () => {
   const text = userInput.value;
   userInput.value = '';
   
-  // 添加用户消息
+  // 记录当前索引
   const userMsgIndex = messages.value.length;
   messages.value.push({
     role: 'user',
     content: text
   });
   
-  // 重点：将这条新发出的消息滚动到顶部
-  scrollToMessage(userMsgIndex);
+  // 发送后，精准滚动到该用户消息的顶部
+  await scrollToMessage(userMsgIndex);
   
   isTyping.value = true;
   
   try {
-    // 修复点：改用 getRecommend 接口，它返回 JSON 格式且包含推荐地点
     const res = await getRecommend({
       userInput: text
     });
     
     if (res.code === 200) {
-      // 添加 AI 回复
+      const aiMsgIndex = messages.value.length;
       messages.value.push({
         role: 'ai',
         content: res.data.understanding
@@ -107,6 +90,9 @@ const handleSend = async () => {
       if (res.data.emotionMatches && res.data.emotionMatches.length > 0) {
         emit('update-results', res.data.emotionMatches);
       }
+
+      // AI 回复完后，滚动到 AI 回复的开头，而不是最底部
+      await scrollToMessage(aiMsgIndex);
     }
   } catch (err) {
     console.log('Chat failed', err);
@@ -116,7 +102,6 @@ const handleSend = async () => {
     });
   } finally {
     isTyping.value = false;
-    scrollToBottom();
   }
 };
 </script>
@@ -255,6 +240,22 @@ const handleSend = async () => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   font-size: 14px;
   flex-shrink: 0;
+}
+
+.message-bubble {
+  display: flex;
+  gap: 12px;
+  position: relative;
+  /* 增加滚动边距，防止被顶部固定栏遮挡 */
+  scroll-margin-top: 100px;
+}
+
+.user {
+  justify-content: flex-end;
+}
+
+.ai {
+  justify-content: flex-start;
 }
 
 .bubble-content {

@@ -30,18 +30,36 @@
     });
 
     const syncLocation = () => {
-        if (!navigator.geolocation) return;
+        if (!navigator.geolocation) {
+            console.warn('浏览器不支持地理定位');
+            return;
+        }
+        
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+
         navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude } = pos.coords;
+            const { latitude, longitude, accuracy } = pos.coords;
+            console.log(`定位成功: ${latitude}, ${longitude}, 精度: ${accuracy}米`);
             try {
                 await updateLocation({ latitude, longitude });
-                console.log('位置已更新');
+                console.log('后端位置已同步');
             } catch (err) {
-                console.log('更新位置失败', err);
+                console.error('同步位置到后端失败', err);
             }
         }, (err) => {
-            console.log('获取定位失败', err);
-        });
+            let errorMsg = '定位失败: ';
+            switch(err.code) {
+                case err.PERMISSION_DENIED: errorMsg += "用户拒绝了定位请求"; break;
+                case err.POSITION_UNAVAILABLE: errorMsg += "位置信息不可用"; break;
+                case err.TIMEOUT: errorMsg += "定位请求超时"; break;
+                default: errorMsg += "未知错误"; break;
+            }
+            console.error(errorMsg);
+        }, options);
     };
 
     // 监听标签切换，重置页面状态到入口页
@@ -60,7 +78,6 @@
                 user_info.value = res.data;
                 localStorage.setItem('token', res.data.token);
                 currentPage.value = 'home';
-                fetchStats();
                 syncLocation();
             }
         } catch (err) {

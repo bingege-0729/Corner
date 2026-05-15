@@ -561,6 +561,9 @@ public class PlaceServiceImpl implements PlaceService {
                 newPlace.setTips("来自AI推荐的外部地点");
                 newPlace = placeEmotionLibraryRepository.save(newPlace);
                 targetPlaceId = newPlace.getId();
+
+                // 3. 保存标签关联
+                saveMoodTags(targetPlaceId, placeCard.getMoodTags());
             }
         }
 
@@ -664,6 +667,9 @@ public class PlaceServiceImpl implements PlaceService {
                 newPlace.setTips("来自AI推荐的外部地点");
                 newPlace = placeEmotionLibraryRepository.save(newPlace);
                 targetPlaceId = newPlace.getId();
+
+                // 3. 保存标签关联
+                saveMoodTags(targetPlaceId, placeCard.getMoodTags());
             }
         }
 
@@ -687,6 +693,30 @@ public class PlaceServiceImpl implements PlaceService {
             memory.setCreatedAt(LocalDateTime.now());
             memory.setUpdatedAt(LocalDateTime.now());
             userPlaceMemoryRepository.save(memory);
+        }
+    }
+
+    /**
+     * 辅助方法：保存地点标签关联
+     */
+    private void saveMoodTags(Long placeId, List<String> moodTags) {
+        if (moodTags != null) {
+            for (String tagName : moodTags) {
+                final String finalTagName = tagName;
+                EmotionTagDict tagDict = emotionTagDictRepository.findAll().stream()
+                        .filter(t -> t.getTagName().equals(finalTagName))
+                        .findFirst()
+                        .orElseGet(() -> {
+                            EmotionTagDict newTag = new EmotionTagDict();
+                            newTag.setTagName(finalTagName);
+                            return emotionTagDictRepository.save(newTag);
+                        });
+                
+                PlaceTagRelation relation = new PlaceTagRelation();
+                relation.setPlaceId(placeId);
+                relation.setTagId(tagDict.getId());
+                placeTagRelationRepository.save(relation);
+            }
         }
     }
 }

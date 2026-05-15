@@ -174,18 +174,47 @@ public class UserServiceImpl implements UserService {
                 EmotionTagDict tag = emotionTagDictRepository.findById(rel.getTagId()).orElse(null);
                 if (tag != null) {
                     String tagName = tag.getTagName();
-                    moodStats.put(tagName, moodStats.getOrDefault(tagName, 0) + 1);
+                    // 归类逻辑
+                    String category = mapToMainCategory(tagName);
+                    moodStats.put(category, moodStats.getOrDefault(category, 0) + 1);
                 }
             }
         }
         
-        // 如果没有任何统计数据，给几个默认值以防前端界面过空
+        // 如果没有任何统计数据，给一个默认值
         if (moodStats.isEmpty()) {
             moodStats.put("探索中", 0);
         }
         
         stats.setMoodStats(moodStats);
-        
         return stats;
+    }
+
+    /**
+     * 将细分标签映射到三大核心心情分类
+     */
+    private String mapToMainCategory(String tag) {
+        if (tag == null) return "平静";
+        
+        // 1. 好心情系列
+        if (tag.contains("好心情") || tag.contains("治愈") || tag.contains("开心") || 
+            tag.contains("惊喜") || tag.contains("浪漫") || tag.contains("阳光")) {
+            return "好心情";
+        }
+        
+        // 2. 烦闷时系列
+        if (tag.contains("烦闷") || tag.contains("孤独") || tag.contains("难过") || 
+            tag.contains("想哭") || tag.contains("压抑") || tag.contains("忧郁")) {
+            return "烦闷时";
+        }
+        
+        // 3. 平静系列 (默认)
+        if (tag.contains("平静") || tag.contains("安静") || tag.contains("放空") || 
+            tag.contains("思考") || tag.contains("读书") || tag.contains("发呆") || tag.contains("独处")) {
+            return "平静";
+        }
+        
+        // 如果实在匹配不上，返回原标签或者归入平静
+        return "平静";
     }
 }
