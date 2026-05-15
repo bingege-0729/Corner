@@ -86,30 +86,47 @@ const renderPlaceMarkers = (userPoint = null) => {
       if (place.latitude && place.longitude) {
         const point = new window.BMap.Point(place.longitude, place.latitude);
         points.push(point);
-        const marker = new window.BMap.Marker(point);
+        
+        // 使用更简洁的点标记，隐藏默认红点，只显示 Label
+        const marker = new window.BMap.Marker(point, {
+          icon: new window.BMap.Symbol(window.BMap_Symbol_SHAPE_CIRCLE, {
+            scale: 0, // 隐藏中心点，只靠 Label 呈现
+          })
+        });
         map.addOverlay(marker);
         
-        const tagsText = place.moodTags && place.moodTags.length > 0 
-          ? ` [${place.moodTags.join(' ')}]` 
-          : '';
-        const labelContent = `${place.placeName}${tagsText}`;
+        const updateLabel = () => {
+          const zoom = map.getZoom();
+          const moodTag = (place.moodTags && place.moodTags.length > 0) ? place.moodTags[0] : '角落';
+          
+          // 根据缩放级别决定内容
+          const content = zoom >= 16 
+            ? `<div class="custom-map-label expanded">
+                 <span class="l-tag">#${moodTag}</span>
+                 <span class="l-name">${place.placeName}</span>
+               </div>`
+            : `<div class="custom-map-label compact">
+                 <span class="l-tag">✨ ${moodTag}</span>
+               </div>`;
+               
+          const label = new window.BMap.Label(content, { 
+            offset: new window.BMap.Size(-20, -20) 
+          });
+          
+          label.setStyle({
+            border: 'none',
+            background: 'transparent',
+            padding: '0'
+          });
+          
+          marker.setLabel(label);
+        };
+
+        // 初始执行一次
+        updateLabel();
         
-        const label = new window.BMap.Label(labelContent, { 
-          offset: new window.BMap.Size(20, -10) 
-        });
-        
-        label.setStyle({
-          border: '1px solid var(--primary-color)',
-          padding: '6px 10px',
-          borderRadius: '12px',
-          fontSize: '12px',
-          color: 'var(--text-main)',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          fontWeight: '500',
-          whiteSpace: 'nowrap'
-        });
-        marker.setLabel(label);
+        // 监听缩放结束，动态更新标签内容
+        map.addEventListener('zoomend', updateLabel);
       }
     });
 
@@ -347,5 +364,55 @@ const renderPlaceMarkers = (userPoint = null) => {
 
 .meta-divider {
   opacity: 0.2;
+}
+/* Custom Map Labels */
+:deep(.custom-map-label) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid #5a6b63; /* 森系深绿 */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+:deep(.custom-map-label.compact) {
+  padding: 6px 12px;
+  background: rgba(90, 107, 99, 0.9); /* 紧凑状态使用主色调背景 */
+  color: white;
+  border: none;
+}
+
+:deep(.custom-map-label.expanded) {
+  animation: expandIn 0.3s ease-out;
+}
+
+:deep(.l-tag) {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #5a6b63;
+}
+
+:deep(.compact .l-tag) {
+  color: white;
+  font-weight: 500;
+}
+
+:deep(.l-name) {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-main);
+  border-left: 1px solid rgba(0,0,0,0.1);
+  padding-left: 8px;
+}
+
+@keyframes expandIn {
+  from { opacity: 0; transform: scale(0.9) translateY(5px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 </style>

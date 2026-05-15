@@ -381,15 +381,15 @@ public class PlaceServiceImpl implements PlaceService {
      */
     @Override
     @Transactional
-    public void toggleBookmark(Long userId, Long placeId, PlaceCard placeCard) {
+    public Long toggleBookmark(Long userId, Long placeId, PlaceCard placeCard) {
         Long targetPlaceId = placeId;
 
         // 1. 处理外部地点入库（如果是联网搜索出来的地点，其ID为-1）
         if (placeId == -1L && placeCard != null) {
-            // 先尝试根据名字和地址查找是否已存在（避免重复入库）
+            // 先尝试根据名字查找是否已存在（地址可能略有差异，以名字为准）
             Optional<PlaceEmotionLibrary> existingPlace = placeEmotionLibraryRepository
                     .findAll().stream()
-                    .filter(p -> p.getPlaceName().equals(placeCard.getPlaceName()) && p.getAddress().equals(placeCard.getAddress()))
+                    .filter(p -> p.getPlaceName().equals(placeCard.getPlaceName()))
                     .findFirst();
 
             if (existingPlace.isPresent()) {
@@ -408,6 +408,9 @@ public class PlaceServiceImpl implements PlaceService {
                 // 保存并获取真实ID
                 newPlace = placeEmotionLibraryRepository.save(newPlace);
                 targetPlaceId = newPlace.getId();
+
+                // 保存标签关联
+                saveMoodTags(targetPlaceId, placeCard.getMoodTags());
             }
         }
 
@@ -429,11 +432,12 @@ public class PlaceServiceImpl implements PlaceService {
             memory.setUserId(userId);
             memory.setPlaceId(targetPlaceId);
             memory.setInteractionType("BOOKMARKED");
-            memory.setVisitedAt(LocalDate.now());
             memory.setCreatedAt(LocalDateTime.now());
             memory.setUpdatedAt(LocalDateTime.now());
             userPlaceMemoryRepository.save(memory);
         }
+
+        return targetPlaceId;
     }
     
     /**

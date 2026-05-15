@@ -52,7 +52,9 @@ const handleSave = async () => {
       toastMessage.value = '已存入记忆 ✨';
       showToast.value = true;
       setTimeout(() => { showToast.value = false; }, 1500);
-      emit('save-memory');
+      
+      // 将新的真实 ID 传回父组件，以便同步状态
+      emit('save-memory', res.data);
     }
   } catch (err) {
     console.log('保存失败', err);

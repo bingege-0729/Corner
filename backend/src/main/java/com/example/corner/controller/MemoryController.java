@@ -26,13 +26,13 @@ public class MemoryController {
      * 切换地点收藏状态（收藏/取消收藏）
      */
     @PostMapping("/{placeId}/bookmark")
-    public Result<Void> toggleBookmark(HttpServletRequest request,
+    public Result<Long> toggleBookmark(HttpServletRequest request,
                                        @PathVariable Long placeId,
                                        @RequestBody(required = false) PlaceCard placeCard) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("用户切换收藏状态: userId={}, placeId={}", userId, placeId);
-        placeService.toggleBookmark(userId, placeId, placeCard);
-        return Result.success();
+        Long targetPlaceId = placeService.toggleBookmark(userId, placeId, placeCard);
+        return Result.success(targetPlaceId);
     }
 
     /**

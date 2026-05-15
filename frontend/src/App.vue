@@ -195,6 +195,17 @@
             console.log('获取地点详情失败', err)
         }
     }
+
+    const handleSaveMemory = (newPlaceId) => {
+        if (newPlaceId && currentPlace.value) {
+            console.log('同步新地点ID:', newPlaceId);
+            currentPlace.value.placeId = newPlaceId;
+            // 同时更新详情数据
+            if (placeDetailData.value) {
+                placeDetailData.value.placeId = newPlaceId;
+            }
+        }
+    };
 </script>
 
 <template>
@@ -226,10 +237,10 @@
           />
         </div>
         <div v-if="currentPage === 'detail'" class="tab-page">
-          <Detail :place="currentPlace" @back="currentPage = previousPage" @go-to="currentPage = 'goto'" />
+          <Detail :place="currentPlace" @back="currentPage = previousPage" @go-to="currentPage = 'goto'" @save-memory="handleSaveMemory" />
         </div>
         <div v-if="currentPage === 'goto'" class="tab-page">
-          <GoTo :place="currentPlace" @back="currentPage = 'detail'" @save-memory="null" />
+          <GoTo :place="currentPlace" @back="currentPage = 'detail'" @save-memory="handleSaveMemory" />
         </div>
         <div v-if="currentPage === 'home' && activeTab === 'memory'" class="tab-page">
           <Memory @select-place="selectPlace" />

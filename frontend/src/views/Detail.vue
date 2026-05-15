@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { getTravelTips, toggleBookmark, getPlaceDetail } from '../api/index';
 
-const emit = defineEmits(['back', 'go-to']);
+const emit = defineEmits(['back', 'go-to', 'save-memory']);
 
 const props = defineProps({
   place: {
@@ -60,6 +60,11 @@ const handleBookmark = async () => {
       setTimeout(() => {
         showToast.value = false;
       }, 1500);
+
+      // 如果是第一次从外部地点转为入库地点，同步 ID
+      if (props.place.placeId === -1 && isBookmarked.value) {
+        emit('save-memory', res.data);
+      }
     }
   } catch (err) {
     console.log('收藏操作失败', err);

@@ -106,9 +106,9 @@ const handleToggleBookmark = async (e, placeId) => {
 }
 
 .image-overlay {
-  padding: 20px;
-  background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
-  color: white;
+  padding: 24px 20px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 100%);
+  color: #ffffff;
 }
 
 .memory-date {
@@ -119,9 +119,11 @@ const handleToggleBookmark = async (e, placeId) => {
 
 .memory-name {
   font-size: 1.4rem;
-  font-weight: 500;
-  margin-top: 4px;
+  font-weight: 600;
+  margin-top: 6px;
   letter-spacing: 0.02em;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .memory-info {
