@@ -15,18 +15,8 @@ import static com.example.corner.common.RedisConstant.USER_MEMORY_KEY_PREFIX;
 public class RecommendServiceImpl implements RecommendService {
 
     @Autowired
-    private UserPlaceMemoryRepository userPlaceMemoryRepository;
-
-    @Autowired
     private RecommendAIService recommendAIService;
 
-    /**
-     * 核心推荐
-     *
-     * @param userId  用户ID
-     * @param request 请求DTO
-     * @return 响应VO
-     */
     @Override
     public RecommendResponse recommend(Long userId, RecommendRequest request) {
         String userMessage = String.format(

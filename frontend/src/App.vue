@@ -30,18 +30,36 @@
     });
 
     const syncLocation = () => {
-        if (!navigator.geolocation) return;
+        if (!navigator.geolocation) {
+            console.warn('浏览器不支持地理定位');
+            return;
+        }
+        
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+
         navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude } = pos.coords;
+            const { latitude, longitude, accuracy } = pos.coords;
+            console.log(`定位成功: ${latitude}, ${longitude}, 精度: ${accuracy}米`);
             try {
                 await updateLocation({ latitude, longitude });
-                console.log('位置已更新');
+                console.log('后端位置已同步');
             } catch (err) {
-                console.log('更新位置失败', err);
+                console.error('同步位置到后端失败', err);
             }
         }, (err) => {
-            console.log('获取定位失败', err);
-        });
+            let errorMsg = '定位失败: ';
+            switch(err.code) {
+                case err.PERMISSION_DENIED: errorMsg += "用户拒绝了定位请求"; break;
+                case err.POSITION_UNAVAILABLE: errorMsg += "位置信息不可用"; break;
+                case err.TIMEOUT: errorMsg += "定位请求超时"; break;
+                default: errorMsg += "未知错误"; break;
+            }
+            console.error(errorMsg);
+        }, options);
     };
 
     // 监听标签切换，重置页面状态到入口页
@@ -53,18 +71,20 @@
 
     const phone=ref('')
     const user_info=ref({})
-    const getLogin=async(phoneNum)=>{
+    const getLogin=async(loginData)=>{
         try {
-            const res = await login({ phone: phoneNum });
+            const res = await login(loginData);
             if (res.code === 200) {
                 user_info.value = res.data;
                 localStorage.setItem('token', res.data.token);
                 currentPage.value = 'home';
-                fetchStats();
                 syncLocation();
+            } else {
+                showToast(res.message || '登录失败');
             }
         } catch (err) {
             console.log('登录失败', err);
+            showToast('密码不对哦，请检查 (123456)');
         }
     }
 
@@ -91,8 +111,8 @@
         currentPage.value = 'detail';
     }
 
-    const handleLogin = (phoneNum) => {
-        getLogin(phoneNum);
+    const handleLogin = (loginData) => {
+        getLogin(loginData);
     }
 
     const handleLogout = () => {
@@ -175,6 +195,17 @@
             console.log('获取地点详情失败', err)
         }
     }
+
+    const handleSaveMemory = (newPlaceId) => {
+        if (newPlaceId && currentPlace.value) {
+            console.log('同步新地点ID:', newPlaceId);
+            currentPlace.value.placeId = newPlaceId;
+            // 同时更新详情数据
+            if (placeDetailData.value) {
+                placeDetailData.value.placeId = newPlaceId;
+            }
+        }
+    };
 </script>
 
 <template>
@@ -206,10 +237,10 @@
           />
         </div>
         <div v-if="currentPage === 'detail'" class="tab-page">
-          <Detail :place="currentPlace" @back="currentPage = previousPage" @go-to="currentPage = 'goto'" />
+          <Detail :place="currentPlace" @back="currentPage = previousPage" @go-to="currentPage = 'goto'" @save-memory="handleSaveMemory" />
         </div>
         <div v-if="currentPage === 'goto'" class="tab-page">
-          <GoTo :place="currentPlace" @back="currentPage = 'detail'" @save-memory="null" />
+          <GoTo :place="currentPlace" @back="currentPage = 'detail'" @save-memory="handleSaveMemory" />
         </div>
         <div v-if="currentPage === 'home' && activeTab === 'memory'" class="tab-page">
           <Memory @select-place="selectPlace" />

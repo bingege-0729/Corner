@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getTravelTips, toggleBookmark } from '../api/index';
+import { getTravelTips, toggleBookmark, getPlaceDetail } from '../api/index';
 
-const emit = defineEmits(['back', 'go-to']);
+const emit = defineEmits(['back', 'go-to', 'save-memory']);
 
 const props = defineProps({
   place: {
@@ -17,11 +17,20 @@ const isBookmarked = ref(false);
 
 onMounted(() => {
   fetchAITips();
-  // 根据后端返回的历史记录判断是否已收藏
-  if (props.place.yourHistory && props.place.yourHistory.hasVisited) {
-    // 假设后端有收藏状态，或者这里根据 history 判断
-  }
+  fetchFullDetail();
 });
+
+const fetchFullDetail = async () => {
+  if (!props.place.placeId || props.place.placeId === -1) return;
+  try {
+    const res = await getPlaceDetail(props.place.placeId);
+    if (res.code === 200 && res.data.yourHistory) {
+      isBookmarked.value = !!res.data.yourHistory.isBookmarked;
+    }
+  } catch (err) {
+    console.log('获取地点详情失败', err);
+  }
+};
 
 const fetchAITips = async () => {
   if (!props.place.placeId) return;
@@ -51,6 +60,11 @@ const handleBookmark = async () => {
       setTimeout(() => {
         showToast.value = false;
       }, 1500);
+
+      // 如果是第一次从外部地点转为入库地点，同步 ID
+      if (props.place.placeId === -1 && isBookmarked.value) {
+        emit('save-memory', res.data);
+      }
     }
   } catch (err) {
     console.log('收藏操作失败', err);

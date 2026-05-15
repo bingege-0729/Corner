@@ -23,7 +23,7 @@ public interface PlaceService {
     /**
      * 切换收藏状态（收藏/取消收藏）
      */
-    void toggleBookmark(Long userId, Long placeId, PlaceCard placeCard);
+    Long toggleBookmark(Long userId, Long placeId, PlaceCard placeCard);
     
     /**
      * 获取用户收藏的地点列表

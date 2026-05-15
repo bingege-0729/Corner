@@ -19,15 +19,11 @@ const messages = ref([]);
 const chatContainer = ref(null);
 const isTyping = ref(false);
 
-// 监听消息变化，自动滚动到底部
-watch(messages, () => {
-  scrollToBottom();
-}, { deep: true });
-
-// 监听地点变化，内容高度增加时也滚动
-watch(() => props.places, () => {
-  scrollToBottom();
-}, { deep: true });
+// 移除全局 watch 自动滚动，改为在具体操作后手动控制
+// 监听 AI 输入状态，确保“正在输入”气泡可见时平滑展示
+watch(isTyping, (val) => {
+  if (val) scrollToBottom();
+});
 
 // 初始化第一条 AI 消息
 onMounted(() => {
@@ -40,6 +36,19 @@ onMounted(() => {
   // 初始加载也滚动一次
   scrollToBottom();
 });
+
+const scrollToMessage = async (index) => {
+  await nextTick();
+  const el = document.getElementById(`msg-${index}`);
+  if (el && chatContainer.value) {
+    // 手动计算偏移量，减去顶部的 padding (80px) 以获得更好的视觉位置
+    const targetScroll = el.offsetTop - 100;
+    chatContainer.value.scrollTo({
+      top: targetScroll,
+      behavior: 'smooth'
+    });
+  }
+};
 
 const scrollToBottom = async () => {
   await nextTick();
@@ -57,23 +66,25 @@ const handleSend = async () => {
   const text = userInput.value;
   userInput.value = '';
   
-  // 添加用户消息
+  // 记录当前索引
+  const userMsgIndex = messages.value.length;
   messages.value.push({
     role: 'user',
     content: text
   });
-  scrollToBottom();
+  
+  // 发送后，精准滚动到该用户消息的顶部
+  await scrollToMessage(userMsgIndex);
   
   isTyping.value = true;
   
   try {
-    // 修复点：改用 getRecommend 接口，它返回 JSON 格式且包含推荐地点
     const res = await getRecommend({
       userInput: text
     });
     
     if (res.code === 200) {
-      // 添加 AI 回复
+      const aiMsgIndex = messages.value.length;
       messages.value.push({
         role: 'ai',
         content: res.data.understanding
@@ -83,6 +94,9 @@ const handleSend = async () => {
       if (res.data.emotionMatches && res.data.emotionMatches.length > 0) {
         emit('update-results', res.data.emotionMatches);
       }
+
+      // AI 回复完后，滚动到 AI 回复的开头，而不是最底部
+      await scrollToMessage(aiMsgIndex);
     }
   } catch (err) {
     console.log('Chat failed', err);
@@ -92,7 +106,6 @@ const handleSend = async () => {
     });
   } finally {
     isTyping.value = false;
-    scrollToBottom();
   }
 };
 </script>
@@ -105,6 +118,7 @@ const handleSend = async () => {
       <div 
         v-for="(msg, index) in messages" 
         :key="index" 
+        :id="'msg-' + index"
         :class="['message-bubble', msg.role]"
       >
         <div class="avatar" v-if="msg.role === 'ai'">✨</div>
@@ -198,6 +212,7 @@ const handleSend = async () => {
 .chat-container {
   flex: 1;
   overflow-y: auto;
+  scroll-behavior: smooth;
   padding: 80px 24px 180px; /* 顶部留出 TopBar 空间，底部留出输入框空间 */
   display: flex;
   flex-direction: column;
@@ -230,6 +245,22 @@ const handleSend = async () => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   font-size: 14px;
   flex-shrink: 0;
+}
+
+.message-bubble {
+  display: flex;
+  gap: 12px;
+  position: relative;
+  /* 增加滚动边距，防止被顶部固定栏遮挡 */
+  scroll-margin-top: 100px;
+}
+
+.user {
+  justify-content: flex-end;
+}
+
+.ai {
+  justify-content: flex-start;
 }
 
 .bubble-content {
@@ -297,6 +328,9 @@ const handleSend = async () => {
   height: 360px;
   background-size: cover;
   background-position: center;
+  /* 兜底背景：优雅的渐变 */
+  background-color: #f0f2f1;
+  background-image: linear-gradient(135deg, #f0f2f1 0%, #e1e6e4 100%);
   border-radius: 28px;
   overflow: hidden;
   position: relative;

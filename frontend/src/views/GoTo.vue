@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { getTravelTips, toggleBookmark, recordExploration } from '../api/index';
 
 const emit = defineEmits(['back', 'save-memory']);
 
@@ -17,67 +18,63 @@ const travelTips = ref({
 });
 
 onMounted(() => {
-  fetchTips();
+  // 1. 直接设置预设的天气和建议
+  travelTips.value = {
+    weatherTip: '今天气温30℃，天气晴朗，注意防晒',
+    preparationTip: props.place.tips || '无需特殊准备，带上好心情出发即可',
+    aiMessage: ''
+  };
+
+  // 2. 初始化保存状态
+  if (props.place.yourHistory) {
+    isSaved.value = !!props.place.yourHistory.isBookmarked;
+  }
 });
 
-const fetchTips = async () => {
-  try {
-    const res = await getTravelTips(props.place.placeId);
-    if (res.code === 200) {
-      travelTips.value = res.data;
-    }
-  } catch (err) {
-    console.log('获取建议失败', err);
-  }
-};
-
 const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.meta.url).href;
-
 const isSaved = ref(false);
 const showToast = ref(false);
+const toastMessage = ref('已存入记忆 ✨');
 const showMapMenu = ref(false);
 
 const handleSave = async () => {
+  if (isSaved.value) {
+    toastMessage.value = '已在记忆中 ✨';
+    showToast.value = true;
+    setTimeout(() => { showToast.value = false; }, 1500);
+    return;
+  }
+
   try {
     const res = await toggleBookmark(props.place.placeId, props.place);
     if (res.code === 200) {
       isSaved.value = true;
+      toastMessage.value = '已存入记忆 ✨';
       showToast.value = true;
-      setTimeout(() => {
-        showToast.value = false;
-      }, 1500);
-      emit('save-memory');
+      setTimeout(() => { showToast.value = false; }, 1500);
+      
+      // 将新的真实 ID 传回父组件，以便同步状态
+      emit('save-memory', res.data);
     }
   } catch (err) {
     console.log('保存失败', err);
   }
 };
 
-const handleNavigate = async (type) => {
+const handleNavigate = async () => {
   const { latitude, longitude, placeName } = props.place;
   
-
   try {
+    // 标记为已游历
     await recordExploration(props.place);
   } catch (err) {
     console.log('记录探索失败', err);
   }
 
-  let url = '';
-  
-  if (type === 'amap') {
-    // 高德地图协议
-    url = `amapuri://route/plan/?did=&dlat=${latitude}&dlon=${longitude}&dname=${placeName}&dev=0&t=0`;
-  } else if (type === 'baidu') {
-    // 百度地图协议
-    url = `baidumap://map/direction?destination=latlng:${latitude},${longitude}|name:${placeName}&mode=driving`;
-  } else if (type === 'apple') {
-    // 苹果地图协议
-    url = `http://maps.apple.com/?daddr=${latitude},${longitude}&dirflg=d`;
-  }
-  
-  window.location.href = url;
-  showMapMenu.value = false;
+  // 高德地图通用 URI 协议（Web/App 自动兼容）
+  // 注意：高德的坐标顺序是 经度,纬度 (lng,lat)
+  const url = `https://uri.amap.com/navigation?to=${longitude},${latitude},${placeName}&mode=car&policy=1&src=corner_app&coordinate=gaode&callnative=1`;
+  window.open(url, '_blank');
 };
 </script>
 
@@ -125,11 +122,11 @@ const handleNavigate = async (type) => {
 
         <!-- Buttons -->
         <div class="actions">
-          <button class="btn-nav" @click="showMapMenu = true">
+          <button class="btn-nav" @click="handleNavigate">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 11L22 2L13 21L11 13L3 11Z" fill="currentColor"/>
             </svg>
-            开始导航
+            开始导航 (高德)
           </button>
           
           <button class="btn-save" @click="handleSave" :class="{ 'is-saved': isSaved }">
@@ -152,20 +149,9 @@ const handleNavigate = async (type) => {
     <!-- Toast Notification -->
     <Transition name="toast">
       <div v-if="showToast" class="toast-container">
-        已存入记忆 ✨
+        {{ toastMessage }}
       </div>
     </Transition>
-
-    <!-- Map Selection Menu -->
-    <div v-if="showMapMenu" class="map-menu-overlay" @click="showMapMenu = false">
-      <div class="map-menu-content" @click.stop>
-        <div class="menu-header">选择导航地图</div>
-        <button class="menu-btn" @click="handleNavigate('amap')">高德地图</button>
-        <button class="menu-btn" @click="handleNavigate('baidu')">百度地图</button>
-        <button class="menu-btn" @click="handleNavigate('apple')">苹果地图</button>
-        <button class="menu-btn cancel" @click="showMapMenu = false">取消</button>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -398,63 +384,5 @@ const handleNavigate = async (type) => {
 .toast-leave-to {
   opacity: 0;
   transform: translate(-50%, -40%);
-}
-
-/* Map Menu Styles */
-.map-menu-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  z-index: 3000;
-  display: flex;
-  align-items: flex-end;
-}
-
-.map-menu-content {
-  width: 100%;
-  background: white;
-  border-radius: 32px 32px 0 0;
-  padding: 24px;
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.menu-header {
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  margin-bottom: 20px;
-}
-
-.menu-btn {
-  width: 100%;
-  padding: 18px;
-  border: none;
-  background: #f8f9fa;
-  border-radius: 16px;
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--text-main);
-  margin-bottom: 12px;
-  cursor: pointer;
-}
-
-.menu-btn:active {
-  background: #eee;
-}
-
-.menu-btn.cancel {
-  background: white;
-  color: #ff4757;
-  margin-top: 8px;
-  margin-bottom: 0;
 }
 </style>

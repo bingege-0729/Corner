@@ -10,4 +10,5 @@ public class UserHistory {
     private String lastVisited;
     private Integer yourRating;
     private String yourFeedback;
+    private Boolean isBookmarked;
 }

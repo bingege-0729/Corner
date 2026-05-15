@@ -32,7 +32,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-
+import java.util.Optional;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -206,14 +206,25 @@ public class RecommendAITools {
         
         // 3. 标签匹配度 (30%)
         double tagMatchScore = 0;
-        // TODO: 需要查询地点的标签，判断是否包含当前情绪标签
         List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(place.getId());
         if (!relations.isEmpty()) {
             for (PlaceTagRelation relation : relations) {
-                EmotionTagDict tag = emotionTagDictRepository.findById(relation.getTagId()).orElse(null);
-                if (tag != null && tag.getTagName().equals(mood)) {
-                    tagMatchScore = 15;
-                    break;
+                emotionTagDictRepository.findById(relation.getTagId()).ifPresent(tag -> {
+                    // 如果地点标签包含用户当前心情，加分
+                    if (tag.getTagName().contains(mood) || mood.contains(tag.getTagName())) {
+                        // 增加权重：标签匹配非常重要
+                        // 这里我们使用一个简单的累加，最多贡献30分
+                    }
+                });
+                
+                // 优化后的逻辑：直接查询是否有匹配的标签名
+                boolean isMatch = relations.stream()
+                        .map(rel -> emotionTagDictRepository.findById(rel.getTagId()))
+                        .filter(Optional::isPresent)
+                        .anyMatch(opt -> opt.get().getTagName().contains(mood) || mood.contains(opt.get().getTagName()));
+                
+                if (isMatch) {
+                    tagMatchScore = 30; // 匹配成功给满分（30%权重）
                 }
             }
         }
@@ -281,7 +292,13 @@ public class RecommendAITools {
      * @param place 地点信息
      * @param distance 地点距离（米）
      */
-    private static @NonNull PlaceCard getPlaceCard(String mood, PlaceEmotionLibrary place, double distance) {
+    /**
+     * 将实体转换为VO卡片
+     * @param mood 用户情绪
+     * @param place 地点信息
+     * @param distance 地点距离（米）
+     */
+    private PlaceCard getPlaceCard(String mood, PlaceEmotionLibrary place, double distance) {
         PlaceCard card = new PlaceCard();
         card.setPlaceId(place.getId());
         card.setPlaceName(place.getPlaceName());
@@ -289,16 +306,31 @@ public class RecommendAITools {
         card.setCrowdLevel(place.getCrowdLevel());
         card.setOneSentence(place.getOneSentence());
         
-        // 确保图片不为空，如果数据库中没有则使用 Picsum 随机图
+        // 确保图片不为空
         String imageUrl = place.getImageUrl();
         if (imageUrl == null || imageUrl.isEmpty()) {
-            int seed = Math.abs(place.getPlaceName().hashCode());
-            imageUrl = String.format("https://picsum.photos/seed/%d/400/300", seed);
+            // 使用更稳定的 Unsplash Source 兜底
+            imageUrl = String.format("https://source.unsplash.com/featured/800x600?%s,nature,calm", 
+                java.net.URLEncoder.encode(place.getPlaceName(), java.nio.charset.StandardCharsets.UTF_8));
         }
         card.setImageUrl(imageUrl);
         
         card.setDistanceText(String.format("距你%.1f公里", distance));
         card.setMatchReason("符合你的" + mood + "心情");
+
+        // 查询并设置标签
+        List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(place.getId());
+        List<String> tags = new ArrayList<>();
+        for (PlaceTagRelation rel : relations) {
+            emotionTagDictRepository.findById(rel.getTagId()).ifPresent(t -> tags.add(t.getTagName()));
+        }
+        
+        // 兜底：如果数据库里没标签，就把当前心情作为标签
+        if (tags.isEmpty() && mood != null && !mood.isEmpty()) {
+            tags.add(mood);
+        }
+        card.setMoodTags(tags);
+
         return card;
     }
 
@@ -393,15 +425,22 @@ public class RecommendAITools {
 
         // 构建搜索查询，确保包含地理位置信息
         String searchQuery = query;
-        // 如果 query 中不包含常见城市关键词，可以添加提示
-        if (!query.matches(".*[北上广深京津沪渝港澳台苏浙鲁粤].*")) {
-            searchQuery = query + " 附近";
+        
+        // 尝试获取当前坐标对应的城市/区
+        String currentArea = reverseGeocode(latitude, longitude);
+        
+        if (query.contains("区") || query.contains("路") || query.contains("街道")) {
+            // 如果用户已经提到了某个区，我们补充当前识别到的城市名以增加准确度
+            searchQuery = query + " " + (currentArea != null ? currentArea : "");
+        } else if (!query.matches(".*[北上广深京津沪渝港澳台苏浙鲁粤].*")) {
+            // 如果用户没提到城市，我们将识别到的当前区域加在前面
+            searchQuery = (currentArea != null ? currentArea : "") + " " + query;
         }
 
         Map<String, Object> body = Map.of(
                 "api_key", tavilyApiKey,
-                "query", searchQuery + " 推荐 地点",
-                "search_depth", "basic",
+                "query", searchQuery + " 推荐 真实地点 详细地址 简体中文",
+                "search_depth", "advanced",
                 "max_results", 3
         );
 
@@ -452,6 +491,13 @@ public class RecommendAITools {
                 String tips = searchPlaceTips(item.get("title"), url);
                 card.setTips(tips);
                 
+                // 设置标签，确保网络搜索卡片不空
+                List<String> tags = new ArrayList<>();
+                tags.add("全网发现");
+                String shortQuery = query.length() > 6 ? query.substring(0, 6) : query;
+                tags.add(shortQuery);
+                card.setMoodTags(tags);
+                
                 cards.add(card);
             }
             
@@ -461,6 +507,37 @@ public class RecommendAITools {
         return cards;
     }
     
+    /**
+     * 逆地理编码：经纬度转城市/区县名称
+     */
+    private String reverseGeocode(BigDecimal lat, BigDecimal lng) {
+        try {
+            RestClient client = RestClient.create("https://api.map.baidu.com");
+            String url = String.format(
+                "/reverse_geocoding/v3/?location=%s,%s&output=json&ak=%s&coordtype=wgs84ll",
+                lat, lng, baiduMapApiKey
+            );
+            
+            Map<String, Object> response = client.get()
+                .uri(url)
+                .retrieve()
+                .body(Map.class);
+            
+            if (response != null && "0".equals(String.valueOf(response.get("status")))) {
+                Map<String, Object> result = (Map<String, Object>) response.get("result");
+                Map<String, Object> addressComp = (Map<String, Object>) result.get("addressComponent");
+                if (addressComp != null) {
+                    String city = (String) addressComp.get("city");
+                    String district = (String) addressComp.get("district");
+                    return (city != null ? city : "") + (district != null ? district : "");
+                }
+            }
+        } catch (Exception e) {
+            // 静默处理
+        }
+        return null;
+    }
+
     /**
      * Geocoding 结果类
      */
@@ -485,10 +562,10 @@ public class RecommendAITools {
         }
         
         try {
-            // 调用百度地图 Geocoding API（地址解析）
+            // 调用百度地图 Geocoding API（地址解析），显式要求返回火星坐标系（gcj02ll）
             RestClient client = RestClient.create("https://api.map.baidu.com");
             String url = String.format(
-                "/geocoding/v3/?address=%s&output=json&ak=%s",
+                "/geocoding/v3/?address=%s&output=json&ak=%s&ret_coordtype=gcj02ll",
                 java.net.URLEncoder.encode(placeName, "UTF-8"),
                 baiduMapApiKey
             );
@@ -650,13 +727,14 @@ public class RecommendAITools {
         }
         
         // 3. 尝试 Unsplash API（高质量免费图片）
-        imageUrl = searchImageFromUnsplash(placeName);
+        String cleanName = cleanPlaceName(placeName);
+        imageUrl = searchImageFromUnsplash(cleanName);
         if (imageUrl != null && !imageUrl.isEmpty()) {
             return imageUrl;
         }
         
         // 4. 尝试 Pexels API（另一个高质量图片源）
-        imageUrl = searchImageFromPexels(placeName);
+        imageUrl = searchImageFromPexels(cleanName);
         if (imageUrl != null && !imageUrl.isEmpty()) {
             return imageUrl;
         }
@@ -671,13 +749,26 @@ public class RecommendAITools {
      */
     private String generateFallbackImage(String placeName) {
         try {
-            // 使用地点名称的 hashCode 作为种子，确保同一地点总是返回相同图片
-            int seed = Math.abs(placeName.hashCode());
-            return String.format("https://picsum.photos/seed/%d/400/300", seed);
+            // 使用 Unsplash 的 Featured 接口作为最后的兜底，通常比 Picsum 质量更高且更稳定
+            String query = java.net.URLEncoder.encode(cleanPlaceName(placeName) + " nature travel", "UTF-8");
+            return "https://source.unsplash.com/featured/800x600?" + query;
         } catch (Exception e) {
-            // 极端情况下，返回一个固定的默认图片 URL
-            return "https://via.placeholder.com/400x300/4A90E2/FFFFFF?text=地点图片";
+            // 极端情况下，返回一个高质量的静态默认图
+            return "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=80&w=800";
         }
+    }
+
+    /**
+     * 清理地点名称，去除干扰词，提高搜索成功率
+     */
+    private String cleanPlaceName(String placeName) {
+        if (placeName == null) return "scenery";
+        return placeName.replaceAll("- 豆瓣", "")
+                        .replaceAll("- 百度百科", "")
+                        .replaceAll("- 知乎", "")
+                        .replaceAll("\\(.*?\\)", "")
+                        .replaceAll("\\[.*?\\]", "")
+                        .trim();
     }
     
     /**

@@ -39,43 +39,127 @@ const initMap = () => {
   // 初始化地图实例
   map = new window.BMap.Map("allmap");
   
+  // 1. 添加控件
+  map.addControl(new window.BMap.NavigationControl()); // 缩放控件
+  map.enableScrollWheelZoom(true); // 允许滚轮缩放
+
+  // 2. 获取用户当前位置并标注
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { latitude, longitude } = pos.coords;
+      const userPoint = new window.BMap.Point(longitude, latitude);
+      
+      // 创建自定义图标：蓝色定位圆点
+      const userIcon = new window.BMap.Symbol(window.BMap_Symbol_SHAPE_CIRCLE, {
+        scale: 6,
+        fillColor: "#4285F4",
+        fillOpacity: 1,
+        strokeColor: "white",
+        strokeWeight: 2,
+      });
+      
+      const userMarker = new window.BMap.Marker(userPoint, { icon: userIcon });
+      map.addOverlay(userMarker);
+      
+      // 如果没有其他点，或者作为初始中心
+      if (places.value.length === 0) {
+        map.centerAndZoom(userPoint, 15);
+      } else {
+        // 将用户位置也加入视野计算
+        renderPlaceMarkers(userPoint);
+      }
+    }, (err) => {
+      console.warn('地图页获取定位失败', err);
+      renderPlaceMarkers();
+    }, { enableHighAccuracy: true, timeout: 5000 });
+  } else {
+    renderPlaceMarkers();
+  }
+};
+
+const renderPlaceMarkers = (userPoint = null) => {
+  // 清除旧覆盖物
+  map.clearOverlays();
+  if (userPoint) {
+    const userIcon = new window.BMap.Symbol(window.BMap_Symbol_SHAPE_CIRCLE, {
+      scale: 6,
+      fillColor: "#4285F4",
+      fillOpacity: 1,
+      strokeColor: "white",
+      strokeWeight: 2,
+    });
+    const userMarker = new window.BMap.Marker(userPoint, { icon: userIcon });
+    map.addOverlay(userMarker);
+  }
+
+  const points = [];
+  if (userPoint) points.push(userPoint);
+
   if (places.value.length > 0) {
-    // 根据地点打点
-    const points = [];
+    console.log('正在渲染发现地点，总数:', places.value.length);
     places.value.forEach(place => {
-      if (place.latitude && place.longitude) {
-        const point = new window.BMap.Point(place.longitude, place.latitude);
+      const lng = parseFloat(place.longitude);
+      const lat = parseFloat(place.latitude);
+      
+      if (!isNaN(lng) && !isNaN(lat)) {
+        const point = new window.BMap.Point(lng, lat);
         points.push(point);
-        const marker = new window.BMap.Marker(point);
+        
+        // 使用一个极其微弱但存在的点作为 Label 的宿主
+        const marker = new window.BMap.Marker(point, {
+          icon: new window.BMap.Symbol(window.BMap_Symbol_SHAPE_CIRCLE, {
+            scale: 3,
+            strokeWeight: 1,
+            strokeColor: "#5a6b63",
+            fillColor: "#5a6b63",
+            fillOpacity: 0.1,
+          })
+        });
         map.addOverlay(marker);
         
-        // 点击标记提示地点名
-        const label = new window.BMap.Label(place.placeName, { offset: new window.BMap.Size(20, -10) });
-        label.setStyle({
-          border: 'none',
-          padding: '4px 8px',
-          borderRadius: '10px',
-          fontSize: '12px',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-        });
-        marker.setLabel(label);
+        const updateLabel = () => {
+          const zoom = map.getZoom();
+          const moodTag = (place.moodTags && place.moodTags.length > 0) ? place.moodTags[0] : '角落';
+          const isVisited = place.visited;
+          const statusClass = isVisited ? 'visited' : 'unvisited';
+          const icon = isVisited ? '✨' : '📍';
+          
+          let content = '';
+          if (zoom >= 16) {
+             content = `<div class="custom-map-label expanded ${statusClass}">
+                 <span class="l-tag">#${moodTag}</span>
+                 <span class="l-name">${place.placeName}</span>
+               </div>`;
+          } else {
+             content = `<div class="custom-map-label compact ${statusClass}">
+                 <span class="l-tag">${icon} ${moodTag}</span>
+               </div>`;
+          }
+               
+          const label = new window.BMap.Label(content, { 
+            offset: new window.BMap.Size(0, 0) 
+          });
+          
+          label.setStyle({
+            border: 'none',
+            background: 'transparent',
+            padding: '0',
+            zIndex: 1000
+          });
+          
+          marker.setLabel(label);
+        };
+
+        updateLabel();
+        // 直接在 map 上监听一次即可，不需要每个 marker 都加监听，这里为了逻辑闭环暂时保留
+        map.addEventListener('zoomend', updateLabel);
       }
     });
 
     if (points.length > 0) {
-      // 自动缩放并居中到包含所有点
       map.setViewport(points);
-    } else {
-      // 默认中心：深圳
-      map.centerAndZoom(new window.BMap.Point(114.057868, 22.543099), 13);
     }
-  } else {
-    // 默认中心：深圳
-    map.centerAndZoom(new window.BMap.Point(114.057868, 22.543099), 13);
   }
-
-  // 允许鼠标滚轮缩放
-  map.enableScrollWheelZoom(true);
 };
 </script>
 
@@ -302,5 +386,79 @@ const initMap = () => {
 
 .meta-divider {
   opacity: 0.2;
+}
+</style>
+
+<!-- 全局样式，确保百度地图内部 DOM 能获取 -->
+<style>
+.custom-map-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  pointer-events: auto;
+  /* 核心定位逻辑：将 Label 的中心点对齐到坐标，并向上平移 */
+  position: absolute;
+  transform: translate(-50%, -100%);
+  margin-top: -15px;
+  z-index: 1000 !important;
+}
+
+/* 已游历：森系深绿 */
+.custom-map-label.visited {
+  border: 1.5px solid #5a6b63 !important;
+}
+.custom-map-label.compact.visited {
+  background: rgba(90, 107, 99, 0.95) !important;
+  color: white !important;
+}
+.visited .l-tag {
+  color: #5a6b63;
+}
+.compact.visited .l-tag {
+  color: white;
+}
+
+/* 没去过：晚霞橘 */
+.custom-map-label.unvisited {
+  border: 1.5px solid #d48e6f !important;
+}
+.custom-map-label.compact.unvisited {
+  background: rgba(212, 142, 111, 0.95) !important;
+  color: white !important;
+}
+.unvisited .l-tag {
+  color: #d48e6f;
+}
+.compact.unvisited .l-tag {
+  color: white;
+}
+
+.custom-map-label.expanded {
+  animation: expandIn 0.3s ease-out;
+}
+
+.l-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.l-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #333;
+  border-left: 1px solid rgba(0,0,0,0.1);
+  padding-left: 8px;
+}
+
+@keyframes expandIn {
+  from { opacity: 0; transform: translate(-50%, -100%) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 }
 </style>
