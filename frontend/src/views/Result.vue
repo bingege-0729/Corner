@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, nextTick, watch } from 'vue';
 import { getRecommend } from '../api/index';
 
 const props = defineProps({
@@ -19,6 +19,16 @@ const messages = ref([]);
 const chatContainer = ref(null);
 const isTyping = ref(false);
 
+// 监听消息变化，自动滚动到底部
+watch(messages, () => {
+  scrollToBottom();
+}, { deep: true });
+
+// 监听地点变化，内容高度增加时也滚动
+watch(() => props.places, () => {
+  scrollToBottom();
+}, { deep: true });
+
 // 初始化第一条 AI 消息
 onMounted(() => {
   if (props.understanding) {
@@ -27,12 +37,17 @@ onMounted(() => {
       content: props.understanding
     });
   }
+  // 初始加载也滚动一次
+  scrollToBottom();
 });
 
 const scrollToBottom = async () => {
   await nextTick();
   if (chatContainer.value) {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    chatContainer.value.scrollTo({
+      top: chatContainer.value.scrollHeight,
+      behavior: 'smooth'
+    });
   }
 };
 
