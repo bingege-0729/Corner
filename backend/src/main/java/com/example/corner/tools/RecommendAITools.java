@@ -289,11 +289,12 @@ public class RecommendAITools {
         card.setCrowdLevel(place.getCrowdLevel());
         card.setOneSentence(place.getOneSentence());
         
-        // 确保图片不为空，如果数据库中没有则使用 Picsum 随机图
+        // 确保图片不为空
         String imageUrl = place.getImageUrl();
         if (imageUrl == null || imageUrl.isEmpty()) {
-            int seed = Math.abs(place.getPlaceName().hashCode());
-            imageUrl = String.format("https://picsum.photos/seed/%d/400/300", seed);
+            // 使用更稳定的 Unsplash Source 兜底
+            imageUrl = String.format("https://source.unsplash.com/featured/800x600?%s,nature,calm", 
+                java.net.URLEncoder.encode(place.getPlaceName(), java.nio.charset.StandardCharsets.UTF_8));
         }
         card.setImageUrl(imageUrl);
         
@@ -650,13 +651,14 @@ public class RecommendAITools {
         }
         
         // 3. 尝试 Unsplash API（高质量免费图片）
-        imageUrl = searchImageFromUnsplash(placeName);
+        String cleanName = cleanPlaceName(placeName);
+        imageUrl = searchImageFromUnsplash(cleanName);
         if (imageUrl != null && !imageUrl.isEmpty()) {
             return imageUrl;
         }
         
         // 4. 尝试 Pexels API（另一个高质量图片源）
-        imageUrl = searchImageFromPexels(placeName);
+        imageUrl = searchImageFromPexels(cleanName);
         if (imageUrl != null && !imageUrl.isEmpty()) {
             return imageUrl;
         }
@@ -671,13 +673,26 @@ public class RecommendAITools {
      */
     private String generateFallbackImage(String placeName) {
         try {
-            // 使用地点名称的 hashCode 作为种子，确保同一地点总是返回相同图片
-            int seed = Math.abs(placeName.hashCode());
-            return String.format("https://picsum.photos/seed/%d/400/300", seed);
+            // 使用 Unsplash 的 Featured 接口作为最后的兜底，通常比 Picsum 质量更高且更稳定
+            String query = java.net.URLEncoder.encode(cleanPlaceName(placeName) + " nature travel", "UTF-8");
+            return "https://source.unsplash.com/featured/800x600?" + query;
         } catch (Exception e) {
-            // 极端情况下，返回一个固定的默认图片 URL
-            return "https://via.placeholder.com/400x300/4A90E2/FFFFFF?text=地点图片";
+            // 极端情况下，返回一个高质量的静态默认图
+            return "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=80&w=800";
         }
+    }
+
+    /**
+     * 清理地点名称，去除干扰词，提高搜索成功率
+     */
+    private String cleanPlaceName(String placeName) {
+        if (placeName == null) return "scenery";
+        return placeName.replaceAll("- 豆瓣", "")
+                        .replaceAll("- 百度百科", "")
+                        .replaceAll("- 知乎", "")
+                        .replaceAll("\\(.*?\\)", "")
+                        .replaceAll("\\[.*?\\]", "")
+                        .trim();
     }
     
     /**

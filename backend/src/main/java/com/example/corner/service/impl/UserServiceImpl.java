@@ -52,9 +52,6 @@ public class UserServiceImpl implements UserService {
     
     @Autowired
     private PlaceEmotionLibraryRepository placeEmotionLibraryRepository;
-    
-    @Autowired
-    private UserMoodRecordRepository userMoodRecordRepository;
 
     /**
      * 文件上传目录
@@ -154,32 +151,39 @@ public class UserServiceImpl implements UserService {
             stats.setAvatarUrl(user.getAvatarUrl());
         }
         
-        // 1. 统计去过的不同地点数量（interaction_type = 'VISITED'）
-        List<UserPlaceMemory> visitedMemories = userPlaceMemoryRepository
-                .findByUserIdAndInteractionType(userId, "VISITED");
-        
-        // 去重统计不同的地点
-        long visitedPlacesCount = visitedMemories.stream()
+        // 1. 统计去过的地点数量（包含 VISITED 和 已去过的 BOOKMARKED）
+        List<UserPlaceMemory> memories = userPlaceMemoryRepository.findByUserId(userId);
+        long visitedPlacesCount = memories.stream()
+                .filter(m -> "VISITED".equals(m.getInteractionType()) || 
+                            ("BOOKMARKED".equals(m.getInteractionType()) && m.getVisitedAt() != null))
                 .map(UserPlaceMemory::getPlaceId)
                 .distinct()
                 .count();
-        
         stats.setVisitedPlacesCount(visitedPlacesCount);
         
-        // 2. 统计各情绪标签使用次数
-        List<UserMoodRecord> moodRecords = userMoodRecordRepository.findByUserId(userId);
-        
+        // 2. 统计各情绪标签使用次数 (动态统计，仅基于去过的地点)
         Map<String, Integer> moodStats = new HashMap<>();
-        moodStats.put("好心情", 0);
-        moodStats.put("平静", 0);
-        moodStats.put("烦闷时", 0);
         
-        // 统计每个情绪的出现次数
-        for (UserMoodRecord record : moodRecords) {
-            String mood = record.getMoodTag();
-            if (moodStats.containsKey(mood)) {
-                moodStats.put(mood, moodStats.get(mood) + 1);
+        // 统计去过地点的心情标签
+        List<UserPlaceMemory> visitedMemories = memories.stream()
+                .filter(m -> "VISITED".equals(m.getInteractionType()) || m.getVisitedAt() != null)
+                .toList();
+        
+        for (UserPlaceMemory memory : visitedMemories) {
+            // 查询该地点的所有标签
+            List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(memory.getPlaceId());
+            for (PlaceTagRelation rel : relations) {
+                EmotionTagDict tag = emotionTagDictRepository.findById(rel.getTagId()).orElse(null);
+                if (tag != null) {
+                    String tagName = tag.getTagName();
+                    moodStats.put(tagName, moodStats.getOrDefault(tagName, 0) + 1);
+                }
             }
+        }
+        
+        // 如果没有任何统计数据，给几个默认值以防前端界面过空
+        if (moodStats.isEmpty()) {
+            moodStats.put("探索中", 0);
         }
         
         stats.setMoodStats(moodStats);

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { getTravelTips, toggleBookmark, recordExploration } from '../api/index';
 
 const emit = defineEmits(['back', 'save-memory']);
 

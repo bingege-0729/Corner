@@ -89,13 +89,17 @@ public class PlaceServiceImpl implements PlaceService {
         UserHistory userHistory = new UserHistory();
         if (memoryOpt.isPresent()) {
             UserPlaceMemory memory = memoryOpt.get();
-            userHistory.setHasVisited(true);
-            userHistory.setVisitCount(1); // TODO: 统计访问次数
-            userHistory.setLastVisited(memory.getVisitedAt() != null ? memory.getVisitedAt().toString() : "");
+            // 只要不是 EXPLORING，就认为去过
+            userHistory.setHasVisited(!"EXPLORING".equals(memory.getInteractionType()));
+            // 判断是否是收藏状态
+            userHistory.setIsBookmarked("BOOKMARKED".equals(memory.getInteractionType()));
+            userHistory.setVisitCount(1);
+            userHistory.setLastVisited(memory.getVisitedAt() != null ? memory.getVisitedAt().toString() : "未知");
             userHistory.setYourRating(memory.getRating());
             userHistory.setYourFeedback(memory.getFeedback());
         } else {
             userHistory.setHasVisited(false);
+            userHistory.setIsBookmarked(false);
             userHistory.setVisitCount(0);
         }
 
@@ -566,17 +570,18 @@ public class PlaceServiceImpl implements PlaceService {
 
         if (memoryOpt.isPresent()) {
             UserPlaceMemory memory = memoryOpt.get();
-            // 如果已经是收藏状态，不需要改变为探索状态
+            // 如果已经是收藏状态，保持收藏状态，但更新访问时间
             if (!"BOOKMARKED".equals(memory.getInteractionType())) {
-                memory.setInteractionType("EXPLORING");
-                memory.setUpdatedAt(LocalDateTime.now());
-                userPlaceMemoryRepository.save(memory);
+                memory.setInteractionType("VISITED");
             }
+            memory.setVisitedAt(LocalDate.now());
+            memory.setUpdatedAt(LocalDateTime.now());
+            userPlaceMemoryRepository.save(memory);
         } else {
             UserPlaceMemory memory = new UserPlaceMemory();
             memory.setUserId(userId);
             memory.setPlaceId(targetPlaceId);
-            memory.setInteractionType("EXPLORING");
+            memory.setInteractionType("VISITED");
             memory.setVisitedAt(LocalDate.now());
             memory.setCreatedAt(LocalDateTime.now());
             memory.setUpdatedAt(LocalDateTime.now());
@@ -590,7 +595,8 @@ public class PlaceServiceImpl implements PlaceService {
         List<UserPlaceMemory> memories = userPlaceMemoryRepository.findByUserId(userId);
         
         return memories.stream()
-                .filter(m -> "BOOKMARKED".equals(m.getInteractionType()) || "EXPLORING".equals(m.getInteractionType()))
+                .filter(m -> "VISITED".equals(m.getInteractionType()) || 
+                            ("BOOKMARKED".equals(m.getInteractionType()) && m.getVisitedAt() != null))
                 .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt())) // 按时间倒序
                 .map(m -> {
                     Optional<PlaceEmotionLibrary> placeOpt = placeEmotionLibraryRepository.findById(m.getPlaceId());

@@ -46,6 +46,22 @@ onMounted(() => {
   scrollToBottom();
 });
 
+const scrollToMessage = async (index) => {
+  await nextTick();
+  const el = document.getElementById(`msg-${index}`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    // 兜底方案：如果没有找到 ID，则滚到底部
+    if (chatContainer.value) {
+      chatContainer.value.scrollTo({
+        top: chatContainer.value.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }
+};
+
 const scrollToBottom = async () => {
   await nextTick();
   if (chatContainer.value) {
@@ -63,11 +79,14 @@ const handleSend = async () => {
   userInput.value = '';
   
   // 添加用户消息
+  const userMsgIndex = messages.value.length;
   messages.value.push({
     role: 'user',
     content: text
   });
-  scrollToBottom();
+  
+  // 重点：将这条新发出的消息滚动到顶部
+  scrollToMessage(userMsgIndex);
   
   isTyping.value = true;
   
@@ -110,6 +129,7 @@ const handleSend = async () => {
       <div 
         v-for="(msg, index) in messages" 
         :key="index" 
+        :id="'msg-' + index"
         :class="['message-bubble', msg.role]"
       >
         <div class="avatar" v-if="msg.role === 'ai'">✨</div>
@@ -302,6 +322,9 @@ const handleSend = async () => {
   height: 360px;
   background-size: cover;
   background-position: center;
+  /* 兜底背景：优雅的渐变 */
+  background-color: #f0f2f1;
+  background-image: linear-gradient(135deg, #f0f2f1 0%, #e1e6e4 100%);
   border-radius: 28px;
   overflow: hidden;
   position: relative;

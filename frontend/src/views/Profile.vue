@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { getUserStats, uploadAvatar } from '../api/index';
 
 const emit = defineEmits(['logout', 'show-discover']);
@@ -9,13 +9,19 @@ const stats = ref({
   moods: {}
 });
 
+// 计算属性：取次数最多的前 4 个心情展示
+const topMoods = computed(() => {
+  return Object.entries(stats.value.moods)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 4);
+});
+
 const loading = ref(false);
+const userName = ref('旅人');
 
 onMounted(() => {
   fetchStats();
 });
-
-const userName = ref('旅人');
 
 const fetchStats = async () => {
   loading.value = true;
@@ -114,8 +120,8 @@ const handleAvatarUpload = async (event) => {
         <span class="stats-label">发现的角落</span>
       </div>
       
-      <div class="stats-card-group" v-if="Object.keys(stats.moods).length > 0">
-        <div v-for="(count, mood) in stats.moods" :key="mood" class="stats-sub-card">
+      <div class="stats-card-group" v-if="topMoods.length > 0">
+        <div v-for="[mood, count] in topMoods" :key="mood" class="stats-sub-card">
           <span class="stats-number">{{ count }}</span>
           <span class="stats-label">{{ mood }}</span>
         </div>
