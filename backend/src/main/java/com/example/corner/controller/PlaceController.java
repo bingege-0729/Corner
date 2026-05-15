@@ -2,6 +2,7 @@ package com.example.corner.controller;
 
 import com.example.corner.common.Result;
 import com.example.corner.service.PlaceService;
+import com.example.corner.vo.PlaceCard;
 import com.example.corner.vo.PlaceDetailResponse;
 import com.example.corner.vo.TravelTipCard;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,5 +39,17 @@ public class PlaceController {
         Long userId = (Long) request.getAttribute("userId");
         TravelTipCard tips = placeService.generateTravelTips(userId, placeId);
         return Result.success(tips);
+    }
+    
+    /**
+     * 标记地点为已访问（VISITED）
+     */
+    @PostMapping("/{placeId}/mark-visited")
+    public Result<Void> markAsVisited(HttpServletRequest request,
+                                      @PathVariable Long placeId,
+                                      @RequestBody(required = false) PlaceCard placeCard) {
+        Long userId = (Long) request.getAttribute("userId");
+        placeService.markAsVisited(userId, placeId, placeCard);
+        return Result.success(null);
     }
 }
