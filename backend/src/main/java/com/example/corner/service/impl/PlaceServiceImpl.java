@@ -541,6 +541,7 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     @Override
+    @Transactional
     public void recordExploration(Long userId, Long placeId, PlaceCard placeCard) {
         Long targetPlaceId = placeId;
 
@@ -578,11 +579,11 @@ public class PlaceServiceImpl implements PlaceService {
 
         if (memoryOpt.isPresent()) {
             UserPlaceMemory memory = memoryOpt.get();
-            // 如果已经是收藏状态，保持收藏状态，但更新访问时间
-            if (!"BOOKMARKED".equals(memory.getInteractionType())) {
-                memory.setInteractionType("VISITED");
+            // 无论之前是什么状态（收藏或探索），现在都标记为已游历
+            memory.setInteractionType("VISITED");
+            if (memory.getVisitedAt() == null) {
+                memory.setVisitedAt(LocalDate.now());
             }
-            memory.setVisitedAt(LocalDate.now());
             memory.setUpdatedAt(LocalDateTime.now());
             userPlaceMemoryRepository.save(memory);
         } else {
@@ -603,7 +604,13 @@ public class PlaceServiceImpl implements PlaceService {
         List<UserPlaceMemory> memories = userPlaceMemoryRepository.findByUserId(userId);
         
         return memories.stream()
-                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt())) // 按时间倒序
+                .sorted((a, b) -> {
+                    LocalDateTime t1 = a.getUpdatedAt() != null ? a.getUpdatedAt() : a.getCreatedAt();
+                    LocalDateTime t2 = b.getUpdatedAt() != null ? b.getUpdatedAt() : b.getCreatedAt();
+                    if (t1 == null) return 1;
+                    if (t2 == null) return -1;
+                    return t2.compareTo(t1);
+                })
                 .map(m -> {
                     Optional<PlaceEmotionLibrary> placeOpt = placeEmotionLibraryRepository.findById(m.getPlaceId());
                     if (placeOpt.isEmpty()) return null;

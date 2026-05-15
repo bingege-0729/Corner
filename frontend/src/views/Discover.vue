@@ -87,10 +87,13 @@ const renderPlaceMarkers = (userPoint = null) => {
         const point = new window.BMap.Point(place.longitude, place.latitude);
         points.push(point);
         
-        // 使用更简洁的点标记，隐藏默认红点，只显示 Label
+        // 使用一个极小的透明圆点作为载体
         const marker = new window.BMap.Marker(point, {
           icon: new window.BMap.Symbol(window.BMap_Symbol_SHAPE_CIRCLE, {
-            scale: 0, // 隐藏中心点，只靠 Label 呈现
+            scale: 4,
+            strokeWeight: 0,
+            fillColor: "transparent",
+            fillOpacity: 0,
           })
         });
         map.addOverlay(marker);
@@ -102,34 +105,35 @@ const renderPlaceMarkers = (userPoint = null) => {
           const statusClass = isVisited ? 'visited' : 'unvisited';
           const icon = isVisited ? '✨' : '📍';
           
-          // 根据缩放级别决定内容
-          const content = zoom >= 16 
-            ? `<div class="custom-map-label expanded ${statusClass}">
+          let content = '';
+          if (zoom >= 16) {
+             content = `<div class="custom-map-label expanded ${statusClass}" style="transform: translate(-50%, -100%); margin-top: -10px;">
                  <span class="l-tag">#${moodTag}</span>
                  <span class="l-name">${place.placeName}</span>
-               </div>`
-            : `<div class="custom-map-label compact ${statusClass}">
+               </div>`;
+          } else {
+             content = `<div class="custom-map-label compact ${statusClass}" style="transform: translate(-50%, -100%); margin-top: -10px;">
                  <span class="l-tag">${icon} ${moodTag}</span>
                </div>`;
+          }
                
           const label = new window.BMap.Label(content, { 
-            offset: new window.BMap.Size(-20, -20) 
+            offset: new window.BMap.Size(0, 0) 
           });
           
           label.setStyle({
             border: 'none',
             background: 'transparent',
-            padding: '0'
+            padding: '0',
+            zIndex: 100
           });
           
           marker.setLabel(label);
         };
 
-        // 初始执行一次
         updateLabel();
-        
-        // 监听缩放结束，动态更新标签内容
         map.addEventListener('zoomend', updateLabel);
+        console.log('添加标记点:', place.placeName, point);
       }
     });
 
@@ -368,67 +372,75 @@ const renderPlaceMarkers = (userPoint = null) => {
 .meta-divider {
   opacity: 0.2;
 }
-/* Custom Map Labels */
-:deep(.custom-map-label) {
+</style>
+
+<!-- 全局样式，确保百度地图内部 DOM 能获取 -->
+<style>
+.custom-map-label {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.95) !important;
   backdrop-filter: blur(8px);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
-  pointer-events: none;
+  pointer-events: auto;
+  position: relative;
+  z-index: 100;
 }
 
 /* 已游历：森系深绿 */
-:deep(.custom-map-label.visited) {
-  border: 1.5px solid #5a6b63;
+.custom-map-label.visited {
+  border: 1.5px solid #5a6b63 !important;
 }
-:deep(.custom-map-label.compact.visited) {
-  background: rgba(90, 107, 99, 0.9);
-  color: white;
-  border: none;
+.custom-map-label.compact.visited {
+  background: rgba(90, 107, 99, 0.95) !important;
+  color: white !important;
 }
-:deep(.visited .l-tag) {
+.visited .l-tag {
   color: #5a6b63;
 }
-:deep(.compact.visited .l-tag) {
+.compact.visited .l-tag {
   color: white;
 }
 
 /* 没去过：晚霞橘 */
-:deep(.custom-map-label.unvisited) {
-  border: 1.5px solid #d48e6f;
+.custom-map-label.unvisited {
+  border: 1.5px solid #d48e6f !important;
 }
-:deep(.custom-map-label.compact.unvisited) {
-  background: rgba(212, 142, 111, 0.9);
-  color: white;
-  border: none;
+.custom-map-label.compact.unvisited {
+  background: rgba(212, 142, 111, 0.95) !important;
+  color: white !important;
 }
-:deep(.unvisited .l-tag) {
+.unvisited .l-tag {
   color: #d48e6f;
 }
-:deep(.compact.unvisited .l-tag) {
+.compact.unvisited .l-tag {
   color: white;
 }
 
-:deep(.custom-map-label.expanded) {
+.custom-map-label.expanded {
   animation: expandIn 0.3s ease-out;
 }
 
-:deep(.l-name) {
+.l-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.l-name {
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--text-main);
+  color: #333;
   border-left: 1px solid rgba(0,0,0,0.1);
   padding-left: 8px;
 }
 
 @keyframes expandIn {
-  from { opacity: 0; transform: scale(0.9) translateY(5px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from { opacity: 0; transform: translate(-50%, -100%) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 }
 </style>
