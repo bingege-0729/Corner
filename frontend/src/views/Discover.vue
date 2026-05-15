@@ -98,15 +98,18 @@ const renderPlaceMarkers = (userPoint = null) => {
         const updateLabel = () => {
           const zoom = map.getZoom();
           const moodTag = (place.moodTags && place.moodTags.length > 0) ? place.moodTags[0] : '角落';
+          const isVisited = place.visited;
+          const statusClass = isVisited ? 'visited' : 'unvisited';
+          const icon = isVisited ? '✨' : '📍';
           
           // 根据缩放级别决定内容
           const content = zoom >= 16 
-            ? `<div class="custom-map-label expanded">
+            ? `<div class="custom-map-label expanded ${statusClass}">
                  <span class="l-tag">#${moodTag}</span>
                  <span class="l-name">${place.placeName}</span>
                </div>`
-            : `<div class="custom-map-label compact">
-                 <span class="l-tag">✨ ${moodTag}</span>
+            : `<div class="custom-map-label compact ${statusClass}">
+                 <span class="l-tag">${icon} ${moodTag}</span>
                </div>`;
                
           const label = new window.BMap.Label(content, { 
@@ -374,33 +377,46 @@ const renderPlaceMarkers = (userPoint = null) => {
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(8px);
-  border: 1.5px solid #5a6b63; /* 森系深绿 */
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   pointer-events: none;
 }
 
-:deep(.custom-map-label.compact) {
-  padding: 6px 12px;
-  background: rgba(90, 107, 99, 0.9); /* 紧凑状态使用主色调背景 */
+/* 已游历：森系深绿 */
+:deep(.custom-map-label.visited) {
+  border: 1.5px solid #5a6b63;
+}
+:deep(.custom-map-label.compact.visited) {
+  background: rgba(90, 107, 99, 0.9);
   color: white;
   border: none;
+}
+:deep(.visited .l-tag) {
+  color: #5a6b63;
+}
+:deep(.compact.visited .l-tag) {
+  color: white;
+}
+
+/* 没去过：晚霞橘 */
+:deep(.custom-map-label.unvisited) {
+  border: 1.5px solid #d48e6f;
+}
+:deep(.custom-map-label.compact.unvisited) {
+  background: rgba(212, 142, 111, 0.9);
+  color: white;
+  border: none;
+}
+:deep(.unvisited .l-tag) {
+  color: #d48e6f;
+}
+:deep(.compact.unvisited .l-tag) {
+  color: white;
 }
 
 :deep(.custom-map-label.expanded) {
   animation: expandIn 0.3s ease-out;
-}
-
-:deep(.l-tag) {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #5a6b63;
-}
-
-:deep(.compact .l-tag) {
-  color: white;
-  font-weight: 500;
 }
 
 :deep(.l-name) {

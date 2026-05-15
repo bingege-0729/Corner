@@ -23,4 +23,5 @@ public class PlaceCard {
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String status;
+    private Boolean visited; // 是否已游历
 }

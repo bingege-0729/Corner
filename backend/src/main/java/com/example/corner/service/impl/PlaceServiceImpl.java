@@ -599,12 +599,10 @@ public class PlaceServiceImpl implements PlaceService {
 
     @Override
     public List<PlaceCard> getDiscoveryPlaces(Long userId) {
-        // 1. 查询所有与用户有交互的地点（排除 VISITED，因为那是已经去过的）
+        // 1. 查询所有与用户有交互的地点（包括收藏和已游历）
         List<UserPlaceMemory> memories = userPlaceMemoryRepository.findByUserId(userId);
         
         return memories.stream()
-                .filter(m -> "VISITED".equals(m.getInteractionType()) || 
-                            ("BOOKMARKED".equals(m.getInteractionType()) && m.getVisitedAt() != null))
                 .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt())) // 按时间倒序
                 .map(m -> {
                     Optional<PlaceEmotionLibrary> placeOpt = placeEmotionLibraryRepository.findById(m.getPlaceId());
@@ -621,11 +619,15 @@ public class PlaceServiceImpl implements PlaceService {
                     card.setLatitude(place.getLatitude());
                     card.setLongitude(place.getLongitude());
                     
-                    // 设置状态文字
-                    if ("BOOKMARKED".equals(m.getInteractionType())) {
+                    // 设置状态文字和游历标识
+                    boolean isVisited = "VISITED".equals(m.getInteractionType()) || m.getVisitedAt() != null;
+                    card.setVisited(isVisited);
+                    if (isVisited) {
+                        card.setStatus("已游历");
+                    } else if ("BOOKMARKED".equals(m.getInteractionType())) {
                         card.setStatus("记忆中");
                     } else {
-                        card.setStatus("待物探");
+                        card.setStatus("探索中");
                     }
                     
                     // 补充标签
