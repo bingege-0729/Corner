@@ -60,6 +60,11 @@ jwt:
 logging:
   level:
     dev.langchain4j: debug
+  charset:
+    console: UTF-8
+    file: UTF-8
+  file:
+    encoding: UTF-8
 
 # 百度地图API配置
 baidu:
@@ -68,12 +73,12 @@ baidu:
     geocoding-url: https://api.map.baidu.com/reverse_geocoding/v3/
     ip-location-url: https://api.map.baidu.com/location/ip
 
-# 和风天气API配置
-qweather:
+# AccuWeather API配置
+accuweather:
   api:
-    key: ${QWEATHER_API_KEY:eb98c22d0d3c4b828720b29122156051}
-    weather-url: https://devapi.qweather.com/v7/weather/now
-    geo-api-url: https://geoapi.qweather.com/v2/city/lookup
+    key: ${ACCUWEATHER_API_KEY:your_accuweather_api_key}
+    current-url: http://dataservice.accuweather.com/currentconditions/v1/
+    locations-url: http://dataservice.accuweather.com/locations/v1/cities/geoposition/search
 
 # 图片搜索 API 配置
 image:
@@ -81,4 +86,3 @@ image:
     access-key: ${UNSPLASH_ACCESS_KEY:your_unsplash_access_key} # Unsplash API Key
   pexels:
     api-key: ${PEXELS_API_KEY:your_pexels_api_key} # Pexels API Key
-

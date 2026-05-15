@@ -17,6 +17,7 @@ import com.example.corner.vo.TravelTipCard;
 import com.example.corner.vo.UserHistory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
+@Slf4j
 @Service
 public class PlaceServiceImpl implements PlaceService {
     
@@ -46,14 +49,14 @@ public class PlaceServiceImpl implements PlaceService {
     @Autowired
     private UserInfoRepository userInfoRepository;
     
-    @Value("${qweather.api.key}")
-    private String qWeatherApiKey;
+    @Value("${accuweather.api.key}")
+    private String accuWeatherApiKey;
     
-    @Value("${qweather.api.weather-url}")
-    private String qWeatherUrl;
+    @Value("${accuweather.api.current-url}")
+    private String accuWeatherCurrentUrl;
     
-    @Value("${qweather.api.geo-api-url}")
-    private String qGeoApiUrl;
+    @Value("${accuweather.api.locations-url}")
+    private String accuWeatherLocationsUrl;
     
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -150,7 +153,7 @@ public class PlaceServiceImpl implements PlaceService {
         tipCard.setAddress(place.getAddress());
         tipCard.setDistanceText(distanceText);
         
-        // 5. 生成天气提示（调用和风天气API）
+        // 5. 生成天气提示（调用AccuWeather API）
         tipCard.setWeatherTip(generateWeatherTip(user));
         
         // 6. 生成准备事项提示
@@ -163,47 +166,48 @@ public class PlaceServiceImpl implements PlaceService {
     }
     
     /**
-     * 生成天气提示（调用和风天气API）
+     * 生成天气提示（调用AccuWeather API）
      */
     private String generateWeatherTip(UserInfo user) {
         try {
-            // 获取用户所在城市
-            String city = null;
-            if (user.getLatitude() != null && user.getLongitude() != null) {
-                // 通过经纬度获取城市名称
-                city = getCityByLocation(user.getLatitude().doubleValue(), user.getLongitude().doubleValue());
-            }
-            
-            // 如果无法获取城市，返回默认提示
-            if (city == null || city.isEmpty()) {
+            // 检查 API Key
+            if (accuWeatherApiKey == null || accuWeatherApiKey.isEmpty()) {
+                log.warn("AccuWeather API Key 未配置，返回默认提示");
                 return "建议出发前查看天气预报，做好相应准备 ☀️";
             }
             
-            // 调用和风天气API获取实时天气
-            Map<String, Object> weatherInfo = getWeatherByCity(city);
+            if (user.getLatitude() == null || user.getLongitude() == null) {
+                log.warn("用户没有经纬度信息");
+                return "建议出发前查看天气预报，做好相应准备 ☀️";
+            }
+            
+            // 调用AccuWeather API获取实时天气
+            Map<String, Object> weatherInfo = getWeatherByLocation(
+                user.getLatitude().doubleValue(), 
+                user.getLongitude().doubleValue()
+            );
             
             if (Boolean.TRUE.equals(weatherInfo.get("success"))) {
+                String city = (String) weatherInfo.get("city");
                 String weather = (String) weatherInfo.get("weather");
                 String temperature = (String) weatherInfo.get("temperature");
-                String windDir = (String) weatherInfo.get("windDir");
-                String windScale = (String) weatherInfo.get("windScale");
                 
                 // 构建天气提示
                 StringBuilder tip = new StringBuilder();
-                tip.append(String.format("%s今天%s，气温%s°C，%s%s级。", city, weather, temperature, windDir, windScale));
+                tip.append(String.format("%s今天%s，气温%s。", city, weather, temperature));
                 
                 // 根据天气给出建议
-                if (weather.contains("雨")) {
+                if (weather.contains("雨") || weather.contains("Rain")) {
                     tip.append("记得带伞哦 ☔");
-                } else if (weather.contains("雪")) {
+                } else if (weather.contains("雪") || weather.contains("Snow")) {
                     tip.append("注意保暖防滑 ❄️");
-                } else if (weather.contains("晴")) {
+                } else if (weather.contains("晴") || weather.contains("Sun") || weather.contains("Clear")) {
                     tip.append("适合出行，注意防晒 ☀️");
-                } else if (weather.contains("云")) {
+                } else if (weather.contains("云") || weather.contains("Cloud")) {
                     tip.append("天气舒适，愉快出行吧 🌤️");
-                } else if (weather.contains("雷")) {
+                } else if (weather.contains("雷") || weather.contains("Thunder")) {
                     tip.append("雷雨天气，注意安全 ⚡");
-                } else if (weather.contains("雾")) {
+                } else if (weather.contains("雾") || weather.contains("Fog")) {
                     tip.append("能见度较低，小心慢行 🌫️");
                 } else {
                     tip.append("祝您旅途愉快 🌟");
@@ -211,110 +215,89 @@ public class PlaceServiceImpl implements PlaceService {
                 
                 return tip.toString();
             } else {
-                // API调用失败，返回默认提示
+                log.warn("获取天气失败: {}", weatherInfo.get("error"));
                 return "建议出发前查看天气预报，做好相应准备 ☀️";
             }
         } catch (Exception e) {
-            // 异常情况下返回默认提示
+            log.error("生成天气提示异常", e);
             return "建议出发前查看天气预报，做好相应准备 ☀️";
         }
     }
     
     /**
-     * 根据经纬度获取城市名称
+     * 根据经纬度获取天气信息（AccuWeather API）
      */
-    private String getCityByLocation(double latitude, double longitude) {
-        try {
-            String url = String.format("%s?key=%s&location=%s,%s",
-                    qGeoApiUrl, qWeatherApiKey, longitude, latitude);
-            
-            String response = restTemplate.getForObject(url, String.class);
-            JsonNode rootNode = objectMapper.readTree(response);
-            
-            String code = rootNode.get("code").asText();
-            if ("200".equals(code)) {
-                JsonNode locationNode = rootNode.get("location");
-                if (locationNode != null && locationNode.isArray() && locationNode.size() > 0) {
-                    return locationNode.get(0).get("name").asText();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-    
-    /**
-     * 根据城市名称获取天气信息
-     */
-    private Map<String, Object> getWeatherByCity(String city) {
+    private Map<String, Object> getWeatherByLocation(double latitude, double longitude) {
         Map<String, Object> result = new HashMap<>();
         
         try {
-            // 1. 先获取城市ID
-            String locationId = getLocationId(city);
-            if (locationId == null) {
-                result.put("success", false);
-                result.put("error", "未找到城市: " + city);
-                return result;
-            }
+            // 1. 先通过经纬度获取 Location Key
+            String locationUrl = String.format("%s?q=%s,%s&apikey=%s",
+                    accuWeatherLocationsUrl, latitude, longitude, accuWeatherApiKey);
             
-            // 2. 根据城市ID获取天气
-            String url = String.format("%s?key=%s&location=%s",
-                    qWeatherUrl, qWeatherApiKey, locationId);
+            log.debug("调用 AccuWeather Locations API: {}", locationUrl.replace(accuWeatherApiKey, "***"));
             
-            String response = restTemplate.getForObject(url, String.class);
-            JsonNode rootNode = objectMapper.readTree(response);
+            String locationResponse = restTemplate.getForObject(locationUrl, String.class);
+            JsonNode locationNode = objectMapper.readTree(locationResponse);
             
-            String code = rootNode.get("code").asText();
-            if ("200".equals(code)) {
-                JsonNode nowNode = rootNode.get("now");
+            if (locationNode.isArray() && locationNode.size() > 0) {
+                String locationKey = locationNode.get(0).get("Key").asText();
+                String cityName = locationNode.get(0).get("LocalizedName").asText();
                 
-                String temp = nowNode.get("temp").asText();           // 温度
-                String text = nowNode.get("text").asText();           // 天气状况
-                String windDir = nowNode.get("windDir").asText();     // 风向
-                String windScale = nowNode.get("windScale").asText(); // 风力等级
+                log.info("获取到 Location Key: {}, 城市: {}", locationKey, cityName);
                 
-                result.put("success", true);
-                result.put("city", city);
-                result.put("temperature", temp);
-                result.put("weather", text);
-                result.put("windDir", windDir);
-                result.put("windScale", windScale);
+                // 2. 通过 Location Key 获取当前天气
+                String weatherUrl = String.format("%s%s?apikey=%s&details=true",
+                        accuWeatherCurrentUrl, locationKey, accuWeatherApiKey);
+                
+                log.debug("调用 AccuWeather Current Conditions API");
+                
+                String weatherResponse = restTemplate.getForObject(weatherUrl, String.class);
+                JsonNode weatherArray = objectMapper.readTree(weatherResponse);
+                
+                if (weatherArray.isArray() && weatherArray.size() > 0) {
+                    JsonNode current = weatherArray.get(0);
+                    
+                    // 温度（摄氏度）
+                    String temp = current.get("Temperature").get("Metric").get("Value").asText() + "°C";
+                    
+                    // 天气描述
+                    String weatherText = current.get("WeatherText").asText();
+                    
+                    // 是否有降水
+                    boolean hasPrecipitation = current.get("HasPrecipitation").asBoolean();
+                    String precipitationType = "";
+                    if (hasPrecipitation) {
+                        precipitationType = current.get("PrecipitationType").asText();
+                    }
+                    
+                    result.put("success", true);
+                    result.put("city", cityName);
+                    result.put("temperature", temp);
+                    result.put("weather", weatherText);
+                    result.put("hasPrecipitation", hasPrecipitation);
+                    result.put("precipitationType", precipitationType);
+                    
+                    log.info("成功获取天气: {} {}, {}", cityName, weatherText, temp);
+                } else {
+                    result.put("success", false);
+                    result.put("error", "未获取到天气数据");
+                }
             } else {
                 result.put("success", false);
-                result.put("error", "天气API返回错误码: " + code);
+                result.put("error", "未找到位置信息");
             }
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("AccuWeather API 请求失败: HTTP {}", e.getStatusCode());
+            result.put("success", false);
+            result.put("error", "API请求失败: " + e.getStatusCode());
         } catch (Exception e) {
+            log.error("获取天气信息失败", e);
             result.put("success", false);
             result.put("error", "解析天气数据失败: " + e.getMessage());
         }
         
         return result;
-    }
-    
-    /**
-     * 根据城市名称获取Location ID
-     */
-    private String getLocationId(String city) {
-        try {
-            String url = String.format("%s?key=%s&location=%s",
-                    qGeoApiUrl, qWeatherApiKey, city);
-            
-            String response = restTemplate.getForObject(url, String.class);
-            JsonNode rootNode = objectMapper.readTree(response);
-            
-            String code = rootNode.get("code").asText();
-            if ("200".equals(code)) {
-                JsonNode locationNode = rootNode.get("location");
-                if (locationNode != null && locationNode.isArray() && locationNode.size() > 0) {
-                    return locationNode.get(0).get("id").asText();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
     }
     
     /**
