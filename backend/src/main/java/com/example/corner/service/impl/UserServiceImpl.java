@@ -2,11 +2,15 @@ package com.example.corner.service.impl;
 
 import com.example.corner.common.Result;
 import com.example.corner.dto.LoginRequest;
+import com.example.corner.entity.EmotionTagDict;
 import com.example.corner.entity.PlaceEmotionLibrary;
+import com.example.corner.entity.PlaceTagRelation;
 import com.example.corner.entity.UserInfo;
 import com.example.corner.entity.UserMoodRecord;
 import com.example.corner.entity.UserPlaceMemory;
+import com.example.corner.repository.EmotionTagDictRepository;
 import com.example.corner.repository.PlaceEmotionLibraryRepository;
+import com.example.corner.repository.PlaceTagRelationRepository;
 import com.example.corner.repository.UserInfoRepository;
 import com.example.corner.repository.UserMoodRecordRepository;
 import com.example.corner.repository.UserPlaceMemoryRepository;
@@ -52,6 +56,12 @@ public class UserServiceImpl implements UserService {
     
     @Autowired
     private PlaceEmotionLibraryRepository placeEmotionLibraryRepository;
+
+    @Autowired
+    private PlaceTagRelationRepository placeTagRelationRepository;
+
+    @Autowired
+    private EmotionTagDictRepository emotionTagDictRepository;
 
     /**
      * 文件上传目录
