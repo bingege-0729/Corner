@@ -29,6 +29,11 @@ watch(() => props.places, () => {
   scrollToBottom();
 }, { deep: true });
 
+// 监听 AI 输入状态，确保“正在输入”气泡可见
+watch(isTyping, (val) => {
+  if (val) scrollToBottom();
+});
+
 // 初始化第一条 AI 消息
 onMounted(() => {
   if (props.understanding) {

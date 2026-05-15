@@ -55,11 +55,6 @@ const handleToggleBookmark = async (e, placeId) => {
           :style="{ backgroundImage: `url(${memory.imageUrl || ''})` }"
         >
           <div class="image-overlay">
-            <button class="card-bookmark-btn" @click="handleToggleBookmark($event, memory.placeId)">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
             <span class="memory-date">{{ memory.lastVisited || '刚刚收藏' }}</span>
             <h2 class="memory-name">{{ memory.placeName }}</h2>
           </div>
@@ -148,30 +143,5 @@ const handleToggleBookmark = async (e, placeId) => {
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.05em;
-}
-
-.card-bookmark-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: white;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  cursor: pointer;
-  z-index: 10;
-  transition: all 0.2s;
-  color: var(--text-muted);
-}
-
-.card-bookmark-btn:active {
-  background: var(--primary-color);
-  color: white;
-  transform: scale(0.9);
 }
 </style>

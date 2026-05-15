@@ -35,17 +35,32 @@ const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.m
 
 const isSaved = ref(false);
 const showToast = ref(false);
+const toastMessage = ref('已存入记忆 ✨');
 const showMapMenu = ref(false);
 
+onMounted(() => {
+  fetchTips();
+  // 初始化保存状态
+  if (props.place.yourHistory) {
+    isSaved.value = !!props.place.yourHistory.isBookmarked;
+  }
+});
+
 const handleSave = async () => {
+  if (isSaved.value) {
+    toastMessage.value = '已在记忆中 ✨';
+    showToast.value = true;
+    setTimeout(() => { showToast.value = false; }, 1500);
+    return;
+  }
+
   try {
     const res = await toggleBookmark(props.place.placeId, props.place);
     if (res.code === 200) {
       isSaved.value = true;
+      toastMessage.value = '已存入记忆 ✨';
       showToast.value = true;
-      setTimeout(() => {
-        showToast.value = false;
-      }, 1500);
+      setTimeout(() => { showToast.value = false; }, 1500);
       emit('save-memory');
     }
   } catch (err) {
@@ -152,7 +167,7 @@ const handleNavigate = async (type) => {
     <!-- Toast Notification -->
     <Transition name="toast">
       <div v-if="showToast" class="toast-container">
-        已存入记忆 ✨
+        {{ toastMessage }}
       </div>
     </Transition>
 
