@@ -2,12 +2,13 @@
 import { ref } from 'vue';
 
 const phone = ref('');
+const password = ref('');
 
 const emit = defineEmits(['login']);
 
 const handleLogin = () => {
-  if (!phone.value || phone.value.length < 11) return;
-  emit('login', phone.value);
+  if (!phone.value || phone.value.length < 11 || !password.value) return;
+  emit('login', { phone: phone.value, password: password.value });
 };
 </script>
 
@@ -20,6 +21,7 @@ const handleLogin = () => {
       </div>
 
       <div class="form-section">
+        <!-- 手机号输入 -->
         <div class="input-group">
           <span class="prefix">+86</span>
           <input 
@@ -31,9 +33,24 @@ const handleLogin = () => {
           />
         </div>
 
+        <!-- 密码输入 -->
+        <div class="input-group">
+          <div class="icon-prefix">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 11H5C3.89543 11 3 11.8954 3 13V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V13C21 11.8954 20.1046 11 19 11Z" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <input 
+            type="password" 
+            v-model="password" 
+            placeholder="输入密码" 
+          />
+        </div>
+
         <button 
           class="btn-primary login-btn" 
-          :class="{ 'dimmed': !phone || phone.length < 11 }"
+          :class="{ 'dimmed': !phone || phone.length < 11 || !password }"
           @click="handleLogin"
         >
           一键注册并登录 <span class="arrow">→</span>
@@ -110,12 +127,14 @@ const handleLogin = () => {
   background: #ffffff;
 }
 
-.prefix {
+.prefix, .icon-prefix {
   color: var(--text-muted);
   font-weight: 500;
   margin-right: 16px;
   padding-right: 16px;
   border-right: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
 }
 
 input {

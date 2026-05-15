@@ -39,9 +39,49 @@ const initMap = () => {
   // 初始化地图实例
   map = new window.BMap.Map("allmap");
   
+  // 1. 添加控件
+  map.addControl(new window.BMap.NavigationControl()); // 缩放控件
+  map.enableScrollWheelZoom(true); // 允许滚轮缩放
+
+  // 2. 获取用户当前位置并标注
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { latitude, longitude } = pos.coords;
+      const userPoint = new window.BMap.Point(longitude, latitude);
+      
+      // 创建自定义图标：蓝色定位圆点
+      const userIcon = new window.BMap.Symbol(window.BMap_Symbol_SHAPE_CIRCLE, {
+        scale: 6,
+        fillColor: "#4285F4",
+        fillOpacity: 1,
+        strokeColor: "white",
+        strokeWeight: 2,
+      });
+      
+      const userMarker = new window.BMap.Marker(userPoint, { icon: userIcon });
+      map.addOverlay(userMarker);
+      
+      // 如果没有其他点，或者作为初始中心
+      if (places.value.length === 0) {
+        map.centerAndZoom(userPoint, 15);
+      } else {
+        // 将用户位置也加入视野计算
+        renderPlaceMarkers(userPoint);
+      }
+    }, (err) => {
+      console.warn('地图页获取定位失败', err);
+      renderPlaceMarkers();
+    }, { enableHighAccuracy: true, timeout: 5000 });
+  } else {
+    renderPlaceMarkers();
+  }
+};
+
+const renderPlaceMarkers = (userPoint = null) => {
+  const points = [];
+  if (userPoint) points.push(userPoint);
+
   if (places.value.length > 0) {
-    // 根据地点打点
-    const points = [];
     places.value.forEach(place => {
       if (place.latitude && place.longitude) {
         const point = new window.BMap.Point(place.longitude, place.latitude);
@@ -49,7 +89,6 @@ const initMap = () => {
         const marker = new window.BMap.Marker(point);
         map.addOverlay(marker);
         
-        // 点击标记提示地点名和标签
         const tagsText = place.moodTags && place.moodTags.length > 0 
           ? ` [${place.moodTags.join(' ')}]` 
           : '';
@@ -75,19 +114,13 @@ const initMap = () => {
     });
 
     if (points.length > 0) {
-      // 自动缩放并居中到包含所有点
       map.setViewport(points);
     } else {
-      // 默认中心：深圳
       map.centerAndZoom(new window.BMap.Point(114.057868, 22.543099), 13);
     }
-  } else {
-    // 默认中心：深圳
+  } else if (!userPoint) {
     map.centerAndZoom(new window.BMap.Point(114.057868, 22.543099), 13);
   }
-
-  // 允许鼠标滚轮缩放
-  map.enableScrollWheelZoom(true);
 };
 </script>
 

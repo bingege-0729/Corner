@@ -14,38 +14,25 @@ const props = defineProps({
 const travelTips = ref({
   weatherTip: '正在获取天气...',
   preparationTip: '正在获取建议...',
-  aiMessage: ''
-});
-
 onMounted(() => {
-  fetchTips();
-});
+  // 1. 直接设置预设的天气和建议
+  travelTips.value = {
+    weatherTip: '今天气温30℃，天气晴朗，注意防晒',
+    preparationTip: props.place.tips || '无需特殊准备，带上好心情出发即可',
+    aiMessage: ''
+  };
 
-const fetchTips = async () => {
-  try {
-    const res = await getTravelTips(props.place.placeId);
-    if (res.code === 200) {
-      travelTips.value = res.data;
-    }
-  } catch (err) {
-    console.log('获取建议失败', err);
-  }
-};
-
-const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.meta.url).href;
-
-const isSaved = ref(false);
-const showToast = ref(false);
-const toastMessage = ref('已存入记忆 ✨');
-const showMapMenu = ref(false);
-
-onMounted(() => {
-  fetchTips();
-  // 初始化保存状态
+  // 2. 初始化保存状态
   if (props.place.yourHistory) {
     isSaved.value = !!props.place.yourHistory.isBookmarked;
   }
 });
+
+const bgImage = props.place.imageUrl || new URL('../assets/img/bg.png', import.meta.url).href;
+const isSaved = ref(false);
+const showToast = ref(false);
+const toastMessage = ref('已存入记忆 ✨');
+const showMapMenu = ref(false);
 
 const handleSave = async () => {
   if (isSaved.value) {
@@ -79,9 +66,10 @@ const handleNavigate = async () => {
     console.log('记录探索失败', err);
   }
 
-  // 高德地图协议
-  const url = `amapuri://route/plan/?did=&dlat=${latitude}&dlon=${longitude}&dname=${placeName}&dev=0&t=0`;
-  window.location.href = url;
+  // 高德地图通用 URI 协议（Web/App 自动兼容）
+  // 注意：高德的坐标顺序是 经度,纬度 (lng,lat)
+  const url = `https://uri.amap.com/navigation?to=${longitude},${latitude},${placeName}&mode=car&policy=1&src=corner_app&coordinate=gaode&callnative=1`;
+  window.open(url, '_blank');
 };
 </script>
 

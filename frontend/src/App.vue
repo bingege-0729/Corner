@@ -71,17 +71,20 @@
 
     const phone=ref('')
     const user_info=ref({})
-    const getLogin=async(phoneNum)=>{
+    const getLogin=async(loginData)=>{
         try {
-            const res = await login({ phone: phoneNum });
+            const res = await login(loginData);
             if (res.code === 200) {
                 user_info.value = res.data;
                 localStorage.setItem('token', res.data.token);
                 currentPage.value = 'home';
                 syncLocation();
+            } else {
+                showToast(res.message || '登录失败');
             }
         } catch (err) {
             console.log('登录失败', err);
+            showToast('密码不对哦，请检查 (123456)');
         }
     }
 
@@ -108,8 +111,8 @@
         currentPage.value = 'detail';
     }
 
-    const handleLogin = (phoneNum) => {
-        getLogin(phoneNum);
+    const handleLogin = (loginData) => {
+        getLogin(loginData);
     }
 
     const handleLogout = () => {

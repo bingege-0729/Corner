@@ -514,7 +514,7 @@ public class RecommendAITools {
         try {
             RestClient client = RestClient.create("https://api.map.baidu.com");
             String url = String.format(
-                "/reverse_geocoding/v3/?location=%s,%s&output=json&ak=%s",
+                "/reverse_geocoding/v3/?location=%s,%s&output=json&ak=%s&coordtype=wgs84ll",
                 lat, lng, baiduMapApiKey
             );
             
@@ -562,10 +562,10 @@ public class RecommendAITools {
         }
         
         try {
-            // 调用百度地图 Geocoding API（地址解析）
+            // 调用百度地图 Geocoding API（地址解析），显式要求返回火星坐标系（gcj02ll）
             RestClient client = RestClient.create("https://api.map.baidu.com");
             String url = String.format(
-                "/geocoding/v3/?address=%s&output=json&ak=%s",
+                "/geocoding/v3/?address=%s&output=json&ak=%s&ret_coordtype=gcj02ll",
                 java.net.URLEncoder.encode(placeName, "UTF-8"),
                 baiduMapApiKey
             );

@@ -69,6 +69,11 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        // 简单密码校验
+        if (!"123456".equals(request.getPassword())) {
+            throw new RuntimeException("密码错误，请输入 123456");
+        }
+
         UserInfo user = userInfoRepository.findByPhone(request.getPhone()).orElse(null);
 
         if (user == null) {
@@ -171,14 +176,20 @@ public class UserServiceImpl implements UserService {
         for (UserPlaceMemory memory : visitedMemories) {
             // 查询该地点的所有标签
             List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(memory.getPlaceId());
+            
+            // 使用 Set 确保对于同一个地点，每种分类只计 1 次分
+            Set<String> uniqueCategoriesPerVisit = new HashSet<>();
+            
             for (PlaceTagRelation rel : relations) {
-                EmotionTagDict tag = emotionTagDictRepository.findById(rel.getTagId()).orElse(null);
-                if (tag != null) {
-                    String tagName = tag.getTagName();
-                    // 归类逻辑
-                    String category = mapToMainCategory(tagName);
-                    moodStats.put(category, moodStats.getOrDefault(category, 0) + 1);
-                }
+                emotionTagDictRepository.findById(rel.getTagId()).ifPresent(tag -> {
+                    String category = mapToMainCategory(tag.getTagName());
+                    uniqueCategoriesPerVisit.add(category);
+                });
+            }
+            
+            // 将该次游历涉及的分类计入总统计
+            for (String category : uniqueCategoriesPerVisit) {
+                moodStats.put(category, moodStats.getOrDefault(category, 0) + 1);
             }
         }
         
@@ -197,21 +208,27 @@ public class UserServiceImpl implements UserService {
     private String mapToMainCategory(String tag) {
         if (tag == null) return "平静";
         
-        // 1. 好心情系列
+        // 1. 好心情系列 (充满活力、积极、治愈)
         if (tag.contains("好心情") || tag.contains("治愈") || tag.contains("开心") || 
-            tag.contains("惊喜") || tag.contains("浪漫") || tag.contains("阳光")) {
+            tag.contains("惊喜") || tag.contains("浪漫") || tag.contains("阳光") ||
+            tag.contains("出片") || tag.contains("精致") || tag.contains("美好") || 
+            tag.contains("chill") || tag.contains("活力")) {
             return "好心情";
         }
         
-        // 2. 烦闷时系列
+        // 2. 烦闷时系列 (发泄、出口、深沉、共鸣)
         if (tag.contains("烦闷") || tag.contains("孤独") || tag.contains("难过") || 
-            tag.contains("想哭") || tag.contains("压抑") || tag.contains("忧郁")) {
+            tag.contains("想哭") || tag.contains("压抑") || tag.contains("忧郁") ||
+            tag.contains("避世") || tag.contains("隐世") || tag.contains("深夜") || 
+            tag.contains("微醺") || tag.contains("宣泄")) {
             return "烦闷时";
         }
         
-        // 3. 平静系列 (默认)
+        // 3. 平静系列 (稳定、思考、休息、独处)
         if (tag.contains("平静") || tag.contains("安静") || tag.contains("放空") || 
-            tag.contains("思考") || tag.contains("读书") || tag.contains("发呆") || tag.contains("独处")) {
+            tag.contains("思考") || tag.contains("读书") || tag.contains("发呆") || 
+            tag.contains("独处") || tag.contains("放松") || tag.contains("慵懒") || 
+            tag.contains("惬意") || tag.contains("复古") || tag.contains("书香")) {
             return "平静";
         }
         

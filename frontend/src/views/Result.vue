@@ -40,9 +40,13 @@ onMounted(() => {
 const scrollToMessage = async (index) => {
   await nextTick();
   const el = document.getElementById(`msg-${index}`);
-  if (el) {
-    // 使用 scrollIntoView 并配合 CSS 的 scroll-margin-top
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (el && chatContainer.value) {
+    // 手动计算偏移量，减去顶部的 padding (80px) 以获得更好的视觉位置
+    const targetScroll = el.offsetTop - 100;
+    chatContainer.value.scrollTo({
+      top: targetScroll,
+      behavior: 'smooth'
+    });
   }
 };
 
@@ -208,6 +212,7 @@ const handleSend = async () => {
 .chat-container {
   flex: 1;
   overflow-y: auto;
+  scroll-behavior: smooth;
   padding: 80px 24px 180px; /* 顶部留出 TopBar 空间，底部留出输入框空间 */
   display: flex;
   flex-direction: column;
