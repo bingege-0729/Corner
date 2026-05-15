@@ -238,6 +238,15 @@ public class PlaceServiceImpl implements PlaceService {
             log.debug("调用 AccuWeather Locations API: {}", locationUrl.replace(accuWeatherApiKey, "***"));
             
             String locationResponse = restTemplate.getForObject(locationUrl, String.class);
+            
+            // 检查响应是否为null
+            if (locationResponse == null || locationResponse.trim().isEmpty()) {
+                log.warn("AccuWeather Locations API 返回空响应");
+                result.put("success", false);
+                result.put("error", "未获取到位置信息");
+                return result;
+            }
+            
             JsonNode locationNode = objectMapper.readTree(locationResponse);
             
             if (locationNode.isArray() && locationNode.size() > 0) {
@@ -253,6 +262,15 @@ public class PlaceServiceImpl implements PlaceService {
                 log.debug("调用 AccuWeather Current Conditions API");
                 
                 String weatherResponse = restTemplate.getForObject(weatherUrl, String.class);
+                
+                // 检查响应是否为null
+                if (weatherResponse == null || weatherResponse.trim().isEmpty()) {
+                    log.warn("AccuWeather Current Conditions API 返回空响应");
+                    result.put("success", false);
+                    result.put("error", "未获取到天气数据");
+                    return result;
+                }
+                
                 JsonNode weatherArray = objectMapper.readTree(weatherResponse);
                 
                 if (weatherArray.isArray() && weatherArray.size() > 0) {
@@ -609,5 +627,60 @@ public class PlaceServiceImpl implements PlaceService {
                 })
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * 标记地点为已访问（VISITED）
+     */
+    @Override
+    public void markAsVisited(Long userId, Long placeId, PlaceCard placeCard) {
+        Long targetPlaceId = placeId;
+
+        // 1. 如果是外部地点（placeId = -1），先持久化
+        if (placeId == -1L && placeCard != null) {
+            // 检查是否已经存在同名地点
+            Optional<PlaceEmotionLibrary> existing = placeEmotionLibraryRepository
+                    .findAll().stream()
+                    .filter(p -> p.getPlaceName().equals(placeCard.getPlaceName()))
+                    .findFirst();
+
+            if (existing.isPresent()) {
+                targetPlaceId = existing.get().getId();
+            } else {
+                PlaceEmotionLibrary newPlace = new PlaceEmotionLibrary();
+                newPlace.setPlaceName(placeCard.getPlaceName());
+                newPlace.setAddress(placeCard.getAddress());
+                newPlace.setOneSentence(placeCard.getOneSentence());
+                newPlace.setImageUrl(placeCard.getImageUrl());
+                newPlace.setCrowdLevel(placeCard.getCrowdLevel());
+                newPlace.setLatitude(placeCard.getLatitude());
+                newPlace.setLongitude(placeCard.getLongitude());
+                newPlace.setTips("来自AI推荐的外部地点");
+                newPlace = placeEmotionLibraryRepository.save(newPlace);
+                targetPlaceId = newPlace.getId();
+            }
+        }
+
+        // 2. 检查记录是否存在
+        Optional<UserPlaceMemory> memoryOpt = userPlaceMemoryRepository
+                .findByUserIdAndPlaceId(userId, targetPlaceId);
+
+        if (memoryOpt.isPresent()) {
+            UserPlaceMemory memory = memoryOpt.get();
+            // 更新为 VISITED 状态
+            memory.setInteractionType("VISITED");
+            memory.setVisitedAt(LocalDate.now());
+            memory.setUpdatedAt(LocalDateTime.now());
+            userPlaceMemoryRepository.save(memory);
+        } else {
+            UserPlaceMemory memory = new UserPlaceMemory();
+            memory.setUserId(userId);
+            memory.setPlaceId(targetPlaceId);
+            memory.setInteractionType("VISITED");
+            memory.setVisitedAt(LocalDate.now());
+            memory.setCreatedAt(LocalDateTime.now());
+            memory.setUpdatedAt(LocalDateTime.now());
+            userPlaceMemoryRepository.save(memory);
+        }
     }
 }

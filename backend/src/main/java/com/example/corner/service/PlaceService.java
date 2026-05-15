@@ -45,7 +45,12 @@ public interface PlaceService {
     void recordExploration(Long userId, Long placeId, PlaceCard placeCard);
 
     /**
-     * 获取“发现”页面的地点列表（包含收藏和待探索的）
+     * 获取"发现"页面的地点列表（包含收藏和待探索的）
      */
     List<PlaceCard> getDiscoveryPlaces(Long userId);
+    
+    /**
+     * 标记地点为已访问（VISITED）
+     */
+    void markAsVisited(Long userId, Long placeId, PlaceCard placeCard);
 }

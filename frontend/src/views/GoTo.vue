@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getTravelTips, toggleBookmark, recordExploration } from '../api/index';
 
 const emit = defineEmits(['back', 'save-memory']);
 
@@ -57,7 +56,7 @@ const handleSave = async () => {
 const handleNavigate = async (type) => {
   const { latitude, longitude, placeName } = props.place;
   
-  // 记录到“发现的角落”
+
   try {
     await recordExploration(props.place);
   } catch (err) {
