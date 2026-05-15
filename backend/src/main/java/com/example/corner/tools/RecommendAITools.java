@@ -76,16 +76,16 @@ public class RecommendAITools {
     private static final String RECOMMEND_CACHE_KEY = "recommend_cache:";
 
     /**
-     * 根据情绪+用户收藏+位置推荐地点（三层策略）
-     * 第一层：用户去过(VISITED)和喜欢(BOOKMARKED)的地点，排除不喜欢(DISLIKED)，计算匹配分数
-     * 第二层：若不足3个，从全量地点按情绪标签+距离匹配补充
+     * 根据情绪+位置从本地数据库搜索地点
+     * ⚠️ 重要：此工具可能返回 0-3 个结果（本地数据库数据有限）
+     * ⚠️ 如果返回结果少于 3 个，调用方必须继续调用 searchByVector 或 searchWeb 来补充
      * @param mood 用户情绪
      * @param userId 用户ID
      * @param latitude 用户位置纬度
      * @param longitude 用户位置经度
-     * @return 符合条件的地点列表（按优先级和距离排序，最多3个）
+     * @return 本地匹配的地点列表（可能为空或不足3个）
      */
-    @Tool("getSuitablePlaceByMoodAndLocation")
+    @Tool("从本地数据库搜索地点，注意：此工具可能返回不足3个结果，如果结果少于3个必须调用其他工具补充")
     public List<PlaceCard> getSuitablePlaceBymoodAndsave(
             @P("用户情绪标签：如安静、治愈") String mood,
             @P("用户ID") Long userId,
