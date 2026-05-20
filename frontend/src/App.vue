@@ -84,7 +84,9 @@
             }
         } catch (err) {
             console.log('登录失败', err);
-            showToast('密码不对哦，请检查 (123456)');
+            // 显示后端返回的具体错误信息
+            const errorMsg = err.response?.data?.message || '登录失败，请检查手机号和密码';
+            showToast(errorMsg);
         }
     }
 

@@ -137,6 +137,11 @@
             <artifactId>langchain4j-web-search-engine-tavily</artifactId>
             <version>1.0.1-beta6</version>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
 
         <dependency>
             <groupId>org.testng</groupId>

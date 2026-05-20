@@ -18,6 +18,9 @@ public class UserInfo {
     
     private String nickname; // 昵称
 
+    @Column(nullable = false)
+    private String password;
+
     private String avatarUrl; // 头像URL路径
 
     @Column(name = "latitude", precision = 10, scale = 7)

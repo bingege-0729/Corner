@@ -7,6 +7,7 @@ import com.example.corner.vo.AvatarResponse;
 import com.example.corner.vo.LoginResponse;
 import com.example.corner.vo.UserStatsResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
@@ -31,19 +32,17 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    // 使用动态绝对路径
-    private static final String UPLOAD_DIR;
-    
     static {
         String userDir = System.getProperty("user.dir");
-        UPLOAD_DIR = userDir + File.separator + "uploads" + File.separator + "avatars" + File.separator;
     }
     
     /**
-     * 手机号登录
+     * 密码登录
+     * @param request 登录请求
+     * @return 登录结果
      */
     @PostMapping("/login")
-    public Result<LoginResponse> login(@RequestBody LoginRequest request) {
+    public Result<LoginResponse> login(@RequestBody @Valid LoginRequest request) {
         LoginResponse response = userService.login(request);
         return Result.success(response);
     }

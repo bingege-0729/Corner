@@ -19,6 +19,7 @@ import com.example.corner.vo.AvatarResponse;
 import com.example.corner.vo.LoginResponse;
 import com.example.corner.vo.UserStatsResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -52,6 +53,8 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private EmotionTagDictRepository emotionTagDictRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     /**
      * 文件上传目录
      */
@@ -68,21 +71,20 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request) {
-        // 简单密码校验
-        if (!"123456".equals(request.getPassword())) {
-            throw new RuntimeException("密码错误，请输入 123456");
-        }
+    public LoginResponse login(LoginRequest request) {        // 简单密码校验
 
         UserInfo user = userInfoRepository.findByPhone(request.getPhone()).orElse(null);
-
         if (user == null) {
             user = new UserInfo();
             user.setPhone(request.getPhone());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
             user.setNickname("用户" + request.getPhone().substring(7));
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
             userInfoRepository.save(user);
+        }
+        if(!passwordEncoder.matches(request.getPassword(),user.getPassword())){
+            throw new RuntimeException("密码错误，请重试");
         }
 
         String token = jwtUtil.generateToken(user.getId(), user.getPhone());
