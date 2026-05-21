@@ -26,16 +26,15 @@ public class PlaceVectorLoader {
      * 初始化向量数据
      */
     @PostConstruct
-    public void init(){
+    public void init() {
         log.info("开始初始化地点向量数据...");
         List<PlaceVectorData.PlaceEmbeddingResult> results = placeVectorData.generateAllPlaceEmbeddings();
-        for(PlaceVectorData.PlaceEmbeddingResult result:results){
+        for (PlaceVectorData.PlaceEmbeddingResult result : results) {
             TextSegment segment = TextSegment.from(result.getPlaceText());
             segment.metadata().put("placeId", result.getPlaceId().toString());
             embeddingStore.add(result.getEmbedding(), segment);
         }
         log.info("向量数据加载完成，共加载 {} 个地点", results.size());
     }
-
 
 }

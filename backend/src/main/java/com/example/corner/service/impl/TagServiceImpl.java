@@ -12,10 +12,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class TagServiceImpl implements TagService {
-    
+
     @Autowired
     private EmotionTagDictRepository emotionTagDictRepository;
-    
+
     /**
      * 获取全部标签
      */

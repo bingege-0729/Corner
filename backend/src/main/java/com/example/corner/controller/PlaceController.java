@@ -15,39 +15,36 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/place")
 public class PlaceController {
-    
+
     @Autowired
     private PlaceService placeService;
-    
+
     /**
      * 地点详情
      */
     @GetMapping("/detail/{placeId}")
-    public Result<PlaceDetailResponse> getPlaceDetail(HttpServletRequest request,
-                                                            @PathVariable Long placeId) {
+    public Result<PlaceDetailResponse> getPlaceDetail(HttpServletRequest request, @PathVariable Long placeId) {
         Long userId = (Long) request.getAttribute("userId");
         PlaceDetailResponse response = placeService.getPlaceDetail(userId, placeId);
         return Result.success(response);
     }
-    
+
     /**
      * 生成出行温馨提示
      */
     @PostMapping("/{placeId}/travel-tips")
-    public Result<TravelTipCard> generateTravelTips(HttpServletRequest request,
-                                                     @PathVariable Long placeId) {
+    public Result<TravelTipCard> generateTravelTips(HttpServletRequest request, @PathVariable Long placeId) {
         Long userId = (Long) request.getAttribute("userId");
         TravelTipCard tips = placeService.generateTravelTips(userId, placeId);
         return Result.success(tips);
     }
-    
+
     /**
      * 标记地点为已访问（VISITED）
      */
     @PostMapping("/{placeId}/mark-visited")
-    public Result<Void> markAsVisited(HttpServletRequest request,
-                                      @PathVariable Long placeId,
-                                      @RequestBody(required = false) PlaceCard placeCard) {
+    public Result<Void> markAsVisited(HttpServletRequest request, @PathVariable Long placeId,
+            @RequestBody(required = false) PlaceCard placeCard) {
         Long userId = (Long) request.getAttribute("userId");
         placeService.markAsVisited(userId, placeId, placeCard);
         return Result.success(null);

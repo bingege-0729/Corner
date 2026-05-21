@@ -10,10 +10,10 @@ public class PlaceTagRelation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 关联ID
-    
+
     @Column(name = "place_id")
     private Long placeId; // 地点ID
-    
+
     @Column(name = "tag_id")
     private Long tagId; // 标签ID
 }

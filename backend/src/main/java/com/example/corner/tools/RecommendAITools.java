@@ -41,16 +41,16 @@ public class RecommendAITools {
 
     @Autowired
     private PlaceEmotionLibraryRepository placeEmotionLibraryRepository;
-    
+
     @Autowired
     private EmotionTagDictRepository emotionTagDictRepository;
-    
+
     @Autowired
     private PlaceTagRelationRepository placeTagRelationRepository;
-    
+
     @Autowired
     private UserPlaceMemoryRepository userPlaceMemoryRepository;
-    
+
     @Autowired
     private EmbeddingStore<TextSegment> embeddingStore;
 
@@ -59,50 +59,46 @@ public class RecommendAITools {
 
     @Value("${langchain4j.web-search-engine.tavily.api-key}")
     private String tavilyApiKey;
-    
+
     @Value("${baidu.map.api-key:Fj18RcqBdN8w1lbYY7Rs32Kx6pW1Heru}")
     private String baiduMapApiKey;
-    
+
     @Value("${image.unsplash.access-key:your_unsplash_access_key}")
     private String unsplashAccessKey;
-    
+
     @Value("${image.pexels.api-key:your_pexels_api_key}")
     private String pexelsApiKey;
-    
+
     @Autowired
     private OpenAiChatModel chatModel;
-    
+
     // 推荐结果缓存Key前缀
     private static final String RECOMMEND_CACHE_KEY = "recommend_cache:";
 
     /**
-     * 根据情绪+位置从本地数据库搜索地点
-     * ⚠️ 重要：此工具可能返回 0-3 个结果（本地数据库数据有限）
-     * ⚠️ 如果返回结果少于 3 个，调用方必须继续调用 searchByVector 或 searchWeb 来补充
-     * @param mood 用户情绪
-     * @param userId 用户ID
-     * @param latitude 用户位置纬度
-     * @param longitude 用户位置经度
+     * 根据情绪+位置从本地数据库搜索地点 ⚠️ 重要：此工具可能返回 0-3 个结果（本地数据库数据有限） ⚠️ 如果返回结果少于 3 个，调用方必须继续调用 searchByVector 或 searchWeb 来补充
+     * 
+     * @param mood
+     *            用户情绪
+     * @param userId
+     *            用户ID
+     * @param latitude
+     *            用户位置纬度
+     * @param longitude
+     *            用户位置经度
      * @return 本地匹配的地点列表（可能为空或不足3个）
      */
     @Tool("从本地数据库搜索地点，注意：此工具可能返回不足3个结果，如果结果少于3个必须调用其他工具补充")
-    public List<PlaceCard> getSuitablePlaceBymoodAndsave(
-            @P("用户情绪标签：如安静、治愈") String mood,
-            @P("用户ID") Long userId,
-            @P("用户位置纬度") BigDecimal latitude,
-            @P("用户位置经度") BigDecimal longitude
-            ){
+    public List<PlaceCard> getSuitablePlaceBymoodAndsave(@P("用户情绪标签：如安静、治愈") String mood, @P("用户ID") Long userId,
+            @P("用户位置纬度") BigDecimal latitude, @P("用户位置经度") BigDecimal longitude) {
 
         // 1. 查询用户所有记忆，排除DISLIKED
         List<UserPlaceMemory> allMemories = userPlaceMemoryRepository.findByUserId(userId);
         List<UserPlaceMemory> validMemories = allMemories.stream()
-                .filter(memory -> !"DISLIKED".equals(memory.getInteractionType()))
-                .toList();
+                .filter(memory -> !"DISLIKED".equals(memory.getInteractionType())).toList();
 
         // 获取用户去过的地点ID列表
-        List<Long> visitedPlaceIds = validMemories.stream()
-                .map(UserPlaceMemory::getPlaceId)
-                .distinct()
+        List<Long> visitedPlaceIds = validMemories.stream().map(UserPlaceMemory::getPlaceId).distinct()
                 .collect(Collectors.toList());
 
         List<PlaceCard> result = new ArrayList<>();
@@ -113,10 +109,8 @@ public class RecommendAITools {
             List<ScoredPlace> scoredPlaces = new ArrayList<>();
 
             for (UserPlaceMemory memory : validMemories) {
-                PlaceEmotionLibrary place = memoryPlaces.stream()
-                        .filter(p -> p.getId().equals(memory.getPlaceId()))
-                        .findFirst()
-                        .orElse(null);
+                PlaceEmotionLibrary place = memoryPlaces.stream().filter(p -> p.getId().equals(memory.getPlaceId()))
+                        .findFirst().orElse(null);
 
                 if (place != null) {
                     double score = calculateMatchScore(memory, place, mood);
@@ -126,9 +120,7 @@ public class RecommendAITools {
 
             // 按分数降序排序，取前5个
             scoredPlaces.sort((a, b) -> Double.compare(b.score, a.score));
-            List<ScoredPlace> topMemories = scoredPlaces.stream()
-                    .limit(5)
-                    .toList();
+            List<ScoredPlace> topMemories = scoredPlaces.stream().limit(5).toList();
 
             // 构建第一层结果（在5公里内的）
             for (ScoredPlace sp : topMemories) {
@@ -142,21 +134,19 @@ public class RecommendAITools {
         if (result.size() < 3) {
             // 获取所有匹配该情绪标签的地点ID
             List<EmotionTagDict> matchingTags = emotionTagDictRepository.findAll().stream()
-                    .filter(tag -> tag.getTagName().equals(mood))
-                    .collect(Collectors.toList());
+                    .filter(tag -> tag.getTagName().equals(mood)).collect(Collectors.toList());
 
             if (!matchingTags.isEmpty()) {
                 // 获取除了去过的地点ID
                 List<Long> moodMatchedPlaceIds = matchingTags.stream()
                         .flatMap(tag -> placeTagRelationRepository.findByTagId(tag.getId()).stream())
-                        .map(PlaceTagRelation::getPlaceId)
-                        .distinct()
-                        .filter(id -> !visitedPlaceIds.contains(id)) // 排除已经去过的
+                        .map(PlaceTagRelation::getPlaceId).distinct().filter(id -> !visitedPlaceIds.contains(id)) // 排除已经去过的
                         .collect(Collectors.toList());
 
                 // 获取该标签匹配的地点
                 if (!moodMatchedPlaceIds.isEmpty()) {
-                    List<PlaceEmotionLibrary> moodPlaces = placeEmotionLibraryRepository.findAllById(moodMatchedPlaceIds);
+                    List<PlaceEmotionLibrary> moodPlaces = placeEmotionLibraryRepository
+                            .findAllById(moodMatchedPlaceIds);
 
                     // 按距离排序
                     for (PlaceEmotionLibrary place : moodPlaces) {
@@ -179,15 +169,11 @@ public class RecommendAITools {
             return Double.compare(distA, distB);
         });
 
-
         return result;
     }
-    
+
     /**
-     * 计算匹配分数
-     * - 用户评分权重 40% (1-5 分)
-     * - 互动类型权重 30% (BOOKMARKED=1.0, VISITED=0.7)
-     * - 标签匹配度 30% (情绪标签匹配)
+     * 计算匹配分数 - 用户评分权重 40% (1-5 分) - 互动类型权重 30% (BOOKMARKED=1.0, VISITED=0.7) - 标签匹配度 30% (情绪标签匹配)
      */
     private double calculateMatchScore(UserPlaceMemory memory, PlaceEmotionLibrary place, String mood) {
         // 1. 用户评分 (40%)
@@ -195,7 +181,7 @@ public class RecommendAITools {
         if (memory.getRating() != null && memory.getRating() > 0) {
             ratingScore = (memory.getRating() / 5.0) * 40;
         }
-        
+
         // 2. 互动类型 (30%)
         double interactionScore = 0;
         if ("BOOKMARKED".equals(memory.getInteractionType())) {
@@ -203,7 +189,7 @@ public class RecommendAITools {
         } else if ("VISITED".equals(memory.getInteractionType())) {
             interactionScore = 21; // 30 * 0.7
         }
-        
+
         // 3. 标签匹配度 (30%)
         double tagMatchScore = 0;
         List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(place.getId());
@@ -216,22 +202,21 @@ public class RecommendAITools {
                         // 这里我们使用一个简单的累加，最多贡献30分
                     }
                 });
-                
+
                 // 优化后的逻辑：直接查询是否有匹配的标签名
-                boolean isMatch = relations.stream()
-                        .map(rel -> emotionTagDictRepository.findById(rel.getTagId()))
-                        .filter(Optional::isPresent)
-                        .anyMatch(opt -> opt.get().getTagName().contains(mood) || mood.contains(opt.get().getTagName()));
-                
+                boolean isMatch = relations.stream().map(rel -> emotionTagDictRepository.findById(rel.getTagId()))
+                        .filter(Optional::isPresent).anyMatch(
+                                opt -> opt.get().getTagName().contains(mood) || mood.contains(opt.get().getTagName()));
+
                 if (isMatch) {
                     tagMatchScore = 30; // 匹配成功给满分（30%权重）
                 }
             }
         }
-        
+
         return ratingScore + interactionScore + tagMatchScore;
     }
-    
+
     /**
      * 内部类：带分数的地点
      */
@@ -239,42 +224,43 @@ public class RecommendAITools {
         PlaceEmotionLibrary place;
         UserPlaceMemory memory;
         double score;
-        
+
         ScoredPlace(PlaceEmotionLibrary place, UserPlaceMemory memory, double score) {
             this.place = place;
             this.memory = memory;
             this.score = score;
         }
     }
-    
+
     /**
      * 构建地点卡片（如果在5公里内）
-     * @param place 地点信息
-     * @param userLat 用户纬度
-     * @param userLng 用户经度
-     * @param mood 情绪标签
-     * @param isFromMemory 是否来自用户记忆
+     * 
+     * @param place
+     *            地点信息
+     * @param userLat
+     *            用户纬度
+     * @param userLng
+     *            用户经度
+     * @param mood
+     *            情绪标签
+     * @param isFromMemory
+     *            是否来自用户记忆
      * @return 地点卡片，如果超过5公里则返回null
      */
-    private PlaceCard buildPlaceCardIfNearby(PlaceEmotionLibrary place, 
-                                              BigDecimal userLat, 
-                                              BigDecimal userLng,
-                                              String mood,
-                                              boolean isFromMemory) {
+    private PlaceCard buildPlaceCardIfNearby(PlaceEmotionLibrary place, BigDecimal userLat, BigDecimal userLng,
+            String mood, boolean isFromMemory) {
         if (place.getLatitude() == null || place.getLongitude() == null) {
             return null;
         }
-        
-        double distance = calculateDistance(
-                userLat.doubleValue(), userLng.doubleValue(),
-                place.getLatitude().doubleValue(), place.getLongitude().doubleValue()
-        );
-        
+
+        double distance = calculateDistance(userLat.doubleValue(), userLng.doubleValue(),
+                place.getLatitude().doubleValue(), place.getLongitude().doubleValue());
+
         // 只返回5000米以内的地点
         if (distance > 5.0) {
             return null;
         }
-        
+
         PlaceCard card = getPlaceCard(mood, place, distance);
         card.setMatchType(isFromMemory ? "memory_match" : "emotion_match");
         if (isFromMemory) {
@@ -282,21 +268,29 @@ public class RecommendAITools {
         } else {
             card.setMatchReason("符合你的" + mood + "心情");
         }
-        
+
         return card;
     }
 
     /**
      * 获取地点卡片信息
-     * @param mood 用户情绪
-     * @param place 地点信息
-     * @param distance 地点距离（米）
+     * 
+     * @param mood
+     *            用户情绪
+     * @param place
+     *            地点信息
+     * @param distance
+     *            地点距离（米）
      */
     /**
      * 将实体转换为VO卡片
-     * @param mood 用户情绪
-     * @param place 地点信息
-     * @param distance 地点距离（米）
+     * 
+     * @param mood
+     *            用户情绪
+     * @param place
+     *            地点信息
+     * @param distance
+     *            地点距离（米）
      */
     private PlaceCard getPlaceCard(String mood, PlaceEmotionLibrary place, double distance) {
         PlaceCard card = new PlaceCard();
@@ -305,16 +299,16 @@ public class RecommendAITools {
         card.setAddress(place.getAddress());
         card.setCrowdLevel(place.getCrowdLevel());
         card.setOneSentence(place.getOneSentence());
-        
+
         // 确保图片不为空
         String imageUrl = place.getImageUrl();
         if (imageUrl == null || imageUrl.isEmpty()) {
             // 使用更稳定的 Unsplash Source 兜底
-            imageUrl = String.format("https://source.unsplash.com/featured/800x600?%s,nature,calm", 
-                java.net.URLEncoder.encode(place.getPlaceName(), java.nio.charset.StandardCharsets.UTF_8));
+            imageUrl = String.format("https://source.unsplash.com/featured/800x600?%s,nature,calm",
+                    java.net.URLEncoder.encode(place.getPlaceName(), java.nio.charset.StandardCharsets.UTF_8));
         }
         card.setImageUrl(imageUrl);
-        
+
         card.setDistanceText(String.format("距你%.1f公里", distance));
         card.setMatchReason("符合你的" + mood + "心情");
 
@@ -324,7 +318,7 @@ public class RecommendAITools {
         for (PlaceTagRelation rel : relations) {
             emotionTagDictRepository.findById(rel.getTagId()).ifPresent(t -> tags.add(t.getTagName()));
         }
-        
+
         // 兜底：如果数据库里没标签，就把当前心情作为标签
         if (tags.isEmpty() && mood != null && !mood.isEmpty()) {
             tags.add(mood);
@@ -336,74 +330,60 @@ public class RecommendAITools {
 
     /**
      * 计算两点间距离（Haversine公式）
-     * @param lat1 纬度1
+     * 
+     * @param lat1
+     *            纬度1
      * @return 距离（公里）
      */
     private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
         final int R = 6371; // 地球半径（公里）
-        
+
         double latDistance = Math.toRadians(lat2 - lat1);
         double lngDistance = Math.toRadians(lng2 - lng1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2) + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2)) * Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        
+
         return R * c;
     }
 
     @Tool("searchByVector")
-    public List<PlaceCard> searchByVector(
-            @P("用户输入的查询文本") String query,
-            @P("用户ID")Long userId,
-            @P("用户纬度") BigDecimal latitude,
-            @P("用户经度") BigDecimal longitude
-    ){
-        //1.query转向
+    public List<PlaceCard> searchByVector(@P("用户输入的查询文本") String query, @P("用户ID") Long userId,
+            @P("用户纬度") BigDecimal latitude, @P("用户经度") BigDecimal longitude) {
+        // 1.query转向
         Embedding queryEmbedding = embeddingModel.embed(query).content();
 
-        //2.向量相似度度搜索
+        // 2.向量相似度度搜索
         // 2. 向量相似度搜索 ← 这里是 search，不是 findRelevant
-        EmbeddingSearchResult<TextSegment> result = embeddingStore.search(
-                EmbeddingSearchRequest.builder()
-                        .queryEmbedding(queryEmbedding)
-                        .maxResults(10)
-                        .build()
-        );
+        EmbeddingSearchResult<TextSegment> result = embeddingStore
+                .search(EmbeddingSearchRequest.builder().queryEmbedding(queryEmbedding).maxResults(10).build());
         List<EmbeddingMatch<TextSegment>> matches = result.matches();
-        if(matches.isEmpty()){
+        if (matches.isEmpty()) {
             return List.of();
 
         }
-        List<Long> placeIds = matches.stream()
-                .map(m-> Long.valueOf(m.embedded().metadata().getString("placeId")))
+        List<Long> placeIds = matches.stream().map(m -> Long.valueOf(m.embedded().metadata().getString("placeId")))
                 .collect(Collectors.toList());
 
         List<PlaceEmotionLibrary> places = placeEmotionLibraryRepository.findAllById(placeIds);
 
-        //按向量相似度顺序进行排列
-        Map<Long,Double> similarityMap = new LinkedHashMap<>();
-        for(EmbeddingMatch<TextSegment> match:matches){
+        // 按向量相似度顺序进行排列
+        Map<Long, Double> similarityMap = new LinkedHashMap<>();
+        for (EmbeddingMatch<TextSegment> match : matches) {
             Long placeId = Long.valueOf(match.embedded().metadata().getString("placeId"));
-            similarityMap.putIfAbsent(placeId,match.score());
+            similarityMap.putIfAbsent(placeId, match.score());
         }
 
-        //构建PlaceCard
+        // 构建PlaceCard
         List<PlaceCard> cards = new ArrayList<>();
-        for(Long placeId: similarityMap.keySet()){
-            PlaceEmotionLibrary place = places.stream()
-                    .filter(p->p.getId().equals(placeId))
-                    .findFirst()
-                    .orElse(null);
+        for (Long placeId : similarityMap.keySet()) {
+            PlaceEmotionLibrary place = places.stream().filter(p -> p.getId().equals(placeId)).findFirst().orElse(null);
 
-            if(place!=null){
-                double distance = calculateDistance(
-                        latitude.doubleValue(),
-                        longitude.doubleValue(),place.getLatitude().doubleValue(),
-                        place.getLongitude().doubleValue()
-                );
-                if(distance<=5.0){
-                    PlaceCard card = getPlaceCard(query,place,distance);
+            if (place != null) {
+                double distance = calculateDistance(latitude.doubleValue(), longitude.doubleValue(),
+                        place.getLatitude().doubleValue(), place.getLongitude().doubleValue());
+                if (distance <= 5.0) {
+                    PlaceCard card = getPlaceCard(query, place, distance);
                     card.setMatchType("vector_match");
                     card.setMatchReason("与描述的相似");
                     cards.add(card);
@@ -413,22 +393,19 @@ public class RecommendAITools {
         return cards.stream().limit(3).collect(Collectors.toList());
     }
 
-
-
     @Tool("联网搜索地点，在其他工具无法满足用户需求时使用")
-    public List<PlaceCard> searchWeb(
-            @P("搜索关键词，应包含地点/城市信息，如'深圳安静的书店'或'北京咖啡馆'") String query,
-            @P("用户纬度") BigDecimal latitude,
-            @P("用户经度") BigDecimal longitude) {
+    public List<PlaceCard> searchWeb(@P("搜索关键词，应包含地点/城市信息，如'深圳安静的书店'或'北京咖啡馆'") String query,
+            @P("用户纬度") BigDecimal latitude, @P("用户经度") BigDecimal longitude) {
 
-        org.springframework.web.client.RestClient client = org.springframework.web.client.RestClient.create("https://api.tavily.com");
+        org.springframework.web.client.RestClient client = org.springframework.web.client.RestClient
+                .create("https://api.tavily.com");
 
         // 构建搜索查询，确保包含地理位置信息
         String searchQuery = query;
-        
+
         // 尝试获取当前坐标对应的城市/区
         String currentArea = reverseGeocode(latitude, longitude);
-        
+
         if (query.contains("区") || query.contains("路") || query.contains("街道")) {
             // 如果用户已经提到了某个区，我们补充当前识别到的城市名以增加准确度
             searchQuery = query + " " + (currentArea != null ? currentArea : "");
@@ -437,19 +414,11 @@ public class RecommendAITools {
             searchQuery = (currentArea != null ? currentArea : "") + " " + query;
         }
 
-        Map<String, Object> body = Map.of(
-                "api_key", tavilyApiKey,
-                "query", searchQuery + " 推荐 真实地点 详细地址 简体中文",
-                "search_depth", "advanced",
-                "max_results", 3
-        );
+        Map<String, Object> body = Map.of("api_key", tavilyApiKey, "query", searchQuery + " 推荐 真实地点 详细地址 简体中文",
+                "search_depth", "advanced", "max_results", 3);
 
-        Map<String, Object> resp = client.post()
-                .uri("/search")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(Map.class);
+        Map<String, Object> resp = client.post().uri("/search").contentType(MediaType.APPLICATION_JSON).body(body)
+                .retrieve().body(Map.class);
 
         List<PlaceCard> cards = new ArrayList<>();
         List<Map<String, String>> results = (List<Map<String, String>>) resp.get("results");
@@ -458,25 +427,25 @@ public class RecommendAITools {
             for (Map<String, String> item : results) {
                 PlaceCard card = new PlaceCard();
                 card.setPlaceId(-1L); // 网络搜索结果无数据库ID
-                
+
                 // 提取并清理标题（转换为简体）
                 String title = item.get("title");
                 card.setPlaceName(title);
-                
+
                 String url = item.get("url");
                 card.setAddress(url);
-                
+
                 // 优化内容摘要
                 String content = item.get("content");
-                card.setOneSentence(content != null && content.length() > 100 ? 
-                    content.substring(0, 100) + "..." : content);
-                
+                card.setOneSentence(
+                        content != null && content.length() > 100 ? content.substring(0, 100) + "..." : content);
+
                 card.setMatchType("web_search");
-                
+
                 // 尝试从多个来源获取图片
                 String imageUrl = extractImageUrl(item, title);
                 card.setImageUrl(imageUrl);
-                
+
                 // 尝试通过百度地图 Geocoding 获取距离和坐标
                 GeocodingResult geoResult = geocodePlace(item.get("title"));
                 if (geoResult != null) {
@@ -486,43 +455,38 @@ public class RecommendAITools {
                 } else {
                     card.setDistanceText("距离需自行确认");
                 }
-                
+
                 // 联网查询地点注意事项
                 String tips = searchPlaceTips(item.get("title"), url);
                 card.setTips(tips);
-                
+
                 // 设置标签，确保网络搜索卡片不空
                 List<String> tags = new ArrayList<>();
                 tags.add("全网发现");
                 String shortQuery = query.length() > 6 ? query.substring(0, 6) : query;
                 tags.add(shortQuery);
                 card.setMoodTags(tags);
-                
+
                 cards.add(card);
             }
-            
+
             // LLM 后处理：生成个性化推荐理由
             cards = enhanceWithLLM(cards, query, latitude, longitude);
         }
         return cards;
     }
-    
+
     /**
      * 逆地理编码：经纬度转城市/区县名称
      */
     private String reverseGeocode(BigDecimal lat, BigDecimal lng) {
         try {
             RestClient client = RestClient.create("https://api.map.baidu.com");
-            String url = String.format(
-                "/reverse_geocoding/v3/?location=%s,%s&output=json&ak=%s&coordtype=wgs84ll",
-                lat, lng, baiduMapApiKey
-            );
-            
-            Map<String, Object> response = client.get()
-                .uri(url)
-                .retrieve()
-                .body(Map.class);
-            
+            String url = String.format("/reverse_geocoding/v3/?location=%s,%s&output=json&ak=%s&coordtype=wgs84ll", lat,
+                    lng, baiduMapApiKey);
+
+            Map<String, Object> response = client.get().uri(url).retrieve().body(Map.class);
+
             if (response != null && "0".equals(String.valueOf(response.get("status")))) {
                 Map<String, Object> result = (Map<String, Object>) response.get("result");
                 Map<String, Object> addressComp = (Map<String, Object>) result.get("addressComponent");
@@ -545,14 +509,14 @@ public class RecommendAITools {
         String distanceText;
         BigDecimal latitude;
         BigDecimal longitude;
-        
+
         GeocodingResult(String distanceText, BigDecimal latitude, BigDecimal longitude) {
             this.distanceText = distanceText;
             this.latitude = latitude;
             this.longitude = longitude;
         }
     }
-    
+
     /**
      * 通过百度地图 Geocoding API 获取地点坐标和距离
      */
@@ -560,34 +524,25 @@ public class RecommendAITools {
         if (placeName == null || placeName.isEmpty()) {
             return null;
         }
-        
+
         try {
             // 调用百度地图 Geocoding API（地址解析），显式要求返回火星坐标系（gcj02ll）
             RestClient client = RestClient.create("https://api.map.baidu.com");
-            String url = String.format(
-                "/geocoding/v3/?address=%s&output=json&ak=%s&ret_coordtype=gcj02ll",
-                java.net.URLEncoder.encode(placeName, "UTF-8"),
-                baiduMapApiKey
-            );
-            
-            Map<String, Object> response = client.get()
-                .uri(url)
-                .retrieve()
-                .body(Map.class);
-            
+            String url = String.format("/geocoding/v3/?address=%s&output=json&ak=%s&ret_coordtype=gcj02ll",
+                    java.net.URLEncoder.encode(placeName, "UTF-8"), baiduMapApiKey);
+
+            Map<String, Object> response = client.get().uri(url).retrieve().body(Map.class);
+
             if (response != null && "0".equals(String.valueOf(response.get("status")))) {
                 Map<String, Object> result = (Map<String, Object>) response.get("result");
                 Map<String, Object> location = (Map<String, Object>) result.get("location");
-                
+
                 if (location != null) {
                     double lat = ((Number) location.get("lat")).doubleValue();
                     double lng = ((Number) location.get("lng")).doubleValue();
-                    
-                    return new GeocodingResult(
-                        "距你需计算",  // 距离会在 Service 层计算
-                        BigDecimal.valueOf(lat),
-                        BigDecimal.valueOf(lng)
-                    );
+
+                    return new GeocodingResult("距你需计算", // 距离会在 Service 层计算
+                            BigDecimal.valueOf(lat), BigDecimal.valueOf(lng));
                 }
             } else {
                 // Geocoding 失败，静默处理
@@ -595,19 +550,19 @@ public class RecommendAITools {
         } catch (Exception e) {
             // Geocoding 异常，静默处理
         }
-        
+
         return null;
     }
-    
+
     /**
      * 使用 LLM 对网络搜索结果进行后处理，生成个性化推荐理由
      */
-    private List<PlaceCard> enhanceWithLLM(List<PlaceCard> cards, String userQuery, 
-                                            BigDecimal latitude, BigDecimal longitude) {
+    private List<PlaceCard> enhanceWithLLM(List<PlaceCard> cards, String userQuery, BigDecimal latitude,
+            BigDecimal longitude) {
         if (cards.isEmpty()) {
             return cards;
         }
-        
+
         try {
             // 构建 LLM 请求
             StringBuilder sb = new StringBuilder();
@@ -619,21 +574,21 @@ public class RecommendAITools {
             sb.append("用户需求：").append(userQuery).append("\n");
             sb.append("用户位置：纬度").append(latitude).append(", 经度").append(longitude).append("\n\n");
             sb.append("搜索结果：\n");
-            
+
             for (int i = 0; i < cards.size(); i++) {
                 PlaceCard card = cards.get(i);
-                sb.append(i + 1).append(". ").append(card.getPlaceName())
-                  .append(" - ").append(card.getOneSentence()).append("\n");
+                sb.append(i + 1).append(". ").append(card.getPlaceName()).append(" - ").append(card.getOneSentence())
+                        .append("\n");
             }
-            
+
             sb.append("\n请为每个地点生成一个简短的推荐理由（30字以内），说明为什么这个地点适合用户的需求。");
             sb.append("\n返回格式：每行一个推荐理由，与上述地点顺序对应。\n");
-            
+
             String prompt = sb.toString();
-            
+
             // 调用 LLM
             String response = chatModel.chat(prompt);
-            
+
             // 解析 LLM 返回的推荐理由
             String[] reasons = response.split("\n");
             for (int i = 0; i < Math.min(reasons.length, cards.size()); i++) {
@@ -642,7 +597,7 @@ public class RecommendAITools {
                     cards.get(i).setMatchReason(reason);
                 }
             }
-            
+
         } catch (Exception e) {
             // LLM 处理失败，使用默认推荐理由
             for (PlaceCard card : cards) {
@@ -651,36 +606,28 @@ public class RecommendAITools {
                 }
             }
         }
-        
+
         return cards;
     }
-    
+
     /**
      * 联网搜索地点注意事项/贴士
      */
     private String searchPlaceTips(String placeName, String url) {
         try {
             RestClient client = RestClient.create("https://api.tavily.com");
-            
+
             // 构建搜索查询，强调当地实际情况和实用信息
             String query = placeName + " 实地游玩攻略 注意事项 当地特色 温馨提示 简体中文";
-            
-            Map<String, Object> body = Map.of(
-                "api_key", tavilyApiKey,
-                "query", query,
-                "search_depth", "advanced", // 使用深度搜索获取更详细的信息
-                "max_results", 3
-            );
-            
-            Map<String, Object> resp = client.post()
-                .uri("/search")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(Map.class);
-            
+
+            Map<String, Object> body = Map.of("api_key", tavilyApiKey, "query", query, "search_depth", "advanced", // 使用深度搜索获取更详细的信息
+                    "max_results", 3);
+
+            Map<String, Object> resp = client.post().uri("/search").contentType(MediaType.APPLICATION_JSON).body(body)
+                    .retrieve().body(Map.class);
+
             List<Map<String, String>> results = (List<Map<String, String>>) resp.get("results");
-            
+
             if (results != null && !results.isEmpty()) {
                 // 合并前2个结果的内容，获取更全面的信息
                 StringBuilder combinedContent = new StringBuilder();
@@ -690,28 +637,26 @@ public class RecommendAITools {
                     if (content != null && !content.isEmpty()) {
                         combinedContent.append(content).append(" ");
                         count++;
-                        if (count >= 2) break; // 只取前2个
+                        if (count >= 2)
+                            break; // 只取前2个
                     }
                 }
-                
+
                 if (combinedContent.length() > 0) {
                     String fullContent = combinedContent.toString();
                     // 截取前200字作为提示（稍微长一点，包含更多实用信息）
-                    return fullContent.length() > 200 ? 
-                        fullContent.substring(0, 200) + "..." : fullContent;
+                    return fullContent.length() > 200 ? fullContent.substring(0, 200) + "..." : fullContent;
                 }
             }
         } catch (Exception e) {
             // 搜索失败，返回默认提示
         }
-        
+
         return "建议提前了解开放时间和相关规定，祝您旅途愉快 🌟";
     }
-    
+
     /**
-     * 从多个来源提取地点图片 URL
-     * 优先级：Tavily > Unsplash > Pexels > Picsum 随机图
-     * 保证每个地点都有图片返回
+     * 从多个来源提取地点图片 URL 优先级：Tavily > Unsplash > Pexels > Picsum 随机图 保证每个地点都有图片返回
      */
     private String extractImageUrl(Map<String, String> item, String placeName) {
         // 1. 尝试从 Tavily 结果中获取 img_src（最稳定）
@@ -719,33 +664,32 @@ public class RecommendAITools {
         if (imageUrl != null && !imageUrl.isEmpty() && imageUrl.startsWith("http")) {
             return imageUrl;
         }
-        
+
         // 2. 尝试从 Tavily 结果的其他字段获取图片
         imageUrl = item.get("image");
         if (imageUrl != null && !imageUrl.isEmpty() && imageUrl.startsWith("http")) {
             return imageUrl;
         }
-        
+
         // 3. 尝试 Unsplash API（高质量免费图片）
         String cleanName = cleanPlaceName(placeName);
         imageUrl = searchImageFromUnsplash(cleanName);
         if (imageUrl != null && !imageUrl.isEmpty()) {
             return imageUrl;
         }
-        
+
         // 4. 尝试 Pexels API（另一个高质量图片源）
         imageUrl = searchImageFromPexels(cleanName);
         if (imageUrl != null && !imageUrl.isEmpty()) {
             return imageUrl;
         }
-        
+
         // 5. 使用 Picsum Photos 生成稳定的随机图片（保证有图片）
         return generateFallbackImage(placeName);
     }
-    
+
     /**
-     * 生成兜底图片（使用 Picsum Photos）
-     * 保证每个地点都有图片返回
+     * 生成兜底图片（使用 Picsum Photos） 保证每个地点都有图片返回
      */
     private String generateFallbackImage(String placeName) {
         try {
@@ -762,15 +706,12 @@ public class RecommendAITools {
      * 清理地点名称，去除干扰词，提高搜索成功率
      */
     private String cleanPlaceName(String placeName) {
-        if (placeName == null) return "scenery";
-        return placeName.replaceAll("- 豆瓣", "")
-                        .replaceAll("- 百度百科", "")
-                        .replaceAll("- 知乎", "")
-                        .replaceAll("\\(.*?\\)", "")
-                        .replaceAll("\\[.*?\\]", "")
-                        .trim();
+        if (placeName == null)
+            return "scenery";
+        return placeName.replaceAll("- 豆瓣", "").replaceAll("- 百度百科", "").replaceAll("- 知乎", "")
+                .replaceAll("\\(.*?\\)", "").replaceAll("\\[.*?\\]", "").trim();
     }
-    
+
     /**
      * 从网页 meta 标签中提取 Open Graph 图片
      */
@@ -784,30 +725,24 @@ public class RecommendAITools {
         }
         return null;
     }
-    
+
     /**
-     * 从 Unsplash 搜索图片（高质量免费图片）
-     * 需要申请 API Key: https://unsplash.com/developers
+     * 从 Unsplash 搜索图片（高质量免费图片） 需要申请 API Key: https://unsplash.com/developers
      */
     private String searchImageFromUnsplash(String placeName) {
         // 检查 API Key 是否配置
         if ("your_unsplash_access_key".equals(unsplashAccessKey)) {
             return null; // 未配置，跳过
         }
-        
+
         try {
             RestClient client = RestClient.create("https://api.unsplash.com");
-            String url = String.format(
-                "/search/photos?query=%s&per_page=1&orientation=landscape",
-                java.net.URLEncoder.encode(placeName + " place location", "UTF-8")
-            );
-            
-            Map<String, Object> response = client.get()
-                .uri(url)
-                .header("Authorization", "Client-ID " + unsplashAccessKey)
-                .retrieve()
-                .body(Map.class);
-            
+            String url = String.format("/search/photos?query=%s&per_page=1&orientation=landscape",
+                    java.net.URLEncoder.encode(placeName + " place location", "UTF-8"));
+
+            Map<String, Object> response = client.get().uri(url)
+                    .header("Authorization", "Client-ID " + unsplashAccessKey).retrieve().body(Map.class);
+
             if (response != null) {
                 List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
                 if (results != null && !results.isEmpty()) {
@@ -823,30 +758,24 @@ public class RecommendAITools {
         }
         return null;
     }
-    
+
     /**
-     * 从 Pexels 搜索图片（另一个高质量免费图片源）
-     * 需要申请 API Key: https://www.pexels.com/api/
+     * 从 Pexels 搜索图片（另一个高质量免费图片源） 需要申请 API Key: https://www.pexels.com/api/
      */
     private String searchImageFromPexels(String placeName) {
         // 检查 API Key 是否配置
         if ("your_pexels_api_key".equals(pexelsApiKey)) {
             return null; // 未配置，跳过
         }
-        
+
         try {
             RestClient client = RestClient.create("https://api.pexels.com");
-            String url = String.format(
-                "/v1/search?query=%s&per_page=1&orientation=landscape",
-                java.net.URLEncoder.encode(placeName + " place", "UTF-8")
-            );
-            
-            Map<String, Object> response = client.get()
-                .uri(url)
-                .header("Authorization", pexelsApiKey)
-                .retrieve()
-                .body(Map.class);
-            
+            String url = String.format("/v1/search?query=%s&per_page=1&orientation=landscape",
+                    java.net.URLEncoder.encode(placeName + " place", "UTF-8"));
+
+            Map<String, Object> response = client.get().uri(url).header("Authorization", pexelsApiKey).retrieve()
+                    .body(Map.class);
+
             if (response != null) {
                 List<Map<String, Object>> photos = (List<Map<String, Object>>) response.get("photos");
                 if (photos != null && !photos.isEmpty()) {

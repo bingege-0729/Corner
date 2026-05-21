@@ -48,8 +48,8 @@ public class LocationServiceImpl implements LocationService {
         location.put("source", user.getLocationSource());
         location.put("updatedAt", user.getUpdatedAt());
 
-        log.info("获取用户位置成功: userId={}, lat={}, lng={}, address={}",
-                userId, user.getLatitude(), user.getLongitude(), user.getAddress());
+        log.info("获取用户位置成功: userId={}, lat={}, lng={}, address={}", userId, user.getLatitude(), user.getLongitude(),
+                user.getAddress());
 
         return location;
     }

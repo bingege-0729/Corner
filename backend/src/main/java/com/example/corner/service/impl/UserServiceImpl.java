@@ -40,10 +40,10 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private JwtUtil jwtUtil;
-    
+
     @Autowired
     private UserPlaceMemoryRepository userPlaceMemoryRepository;
-    
+
     @Autowired
     private PlaceEmotionLibraryRepository placeEmotionLibraryRepository;
 
@@ -59,7 +59,7 @@ public class UserServiceImpl implements UserService {
      * 文件上传目录
      */
     private static final String UPLOAD_DIR;
-    
+
     static {
         // 获取用户目录，确保跨平台兼容
         String userDir = System.getProperty("user.dir");
@@ -71,7 +71,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request) {        // 简单密码校验
+    public LoginResponse login(LoginRequest request) { // 简单密码校验
 
         UserInfo user = userInfoRepository.findByPhone(request.getPhone()).orElse(null);
         if (user == null) {
@@ -83,7 +83,7 @@ public class UserServiceImpl implements UserService {
             user.setUpdatedAt(LocalDateTime.now());
             userInfoRepository.save(user);
         }
-        if(!passwordEncoder.matches(request.getPassword(),user.getPassword())){
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("密码错误，请重试");
         }
 
@@ -99,6 +99,7 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 头像上传
+     * 
      * @param userId
      * @param file
      * @return
@@ -115,7 +116,9 @@ public class UserServiceImpl implements UserService {
         }
 
         String originalFilename = file.getOriginalFilename();
-        String extension = originalFilename != null ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".jpg";
+        String extension = originalFilename != null
+                ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                : ".jpg";
         String fileName = UUID.randomUUID().toString() + extension;
 
         File dest = new File(UPLOAD_DIR + fileName);
@@ -132,7 +135,7 @@ public class UserServiceImpl implements UserService {
 
         return user.getAvatarUrl();
     }
-    
+
     /**
      * 退出登录
      */
@@ -142,64 +145,61 @@ public class UserServiceImpl implements UserService {
         // 这里可以做一些清理工作，比如清除 Redis 中的会话数据（如果有）
         // 目前简单返回，前端负责删除 token
     }
-    
+
     /**
      * 获取用户统计数据
      */
     @Override
     public UserStatsResponse getUserStats(Long userId) {
         UserStatsResponse stats = new UserStatsResponse();
-        
+
         // 0. 获取用户信息
         UserInfo user = userInfoRepository.findById(userId).orElse(null);
         if (user != null) {
             stats.setNickname(user.getNickname());
             stats.setAvatarUrl(user.getAvatarUrl());
         }
-        
+
         // 1. 统计去过的地点数量（包含 VISITED 和 已去过的 BOOKMARKED）
         List<UserPlaceMemory> memories = userPlaceMemoryRepository.findByUserId(userId);
         long visitedPlacesCount = memories.stream()
-                .filter(m -> "VISITED".equals(m.getInteractionType()) || 
-                            ("BOOKMARKED".equals(m.getInteractionType()) && m.getVisitedAt() != null))
-                .map(UserPlaceMemory::getPlaceId)
-                .distinct()
-                .count();
+                .filter(m -> "VISITED".equals(m.getInteractionType())
+                        || ("BOOKMARKED".equals(m.getInteractionType()) && m.getVisitedAt() != null))
+                .map(UserPlaceMemory::getPlaceId).distinct().count();
         stats.setVisitedPlacesCount(visitedPlacesCount);
-        
+
         // 2. 统计各情绪标签使用次数 (动态统计，仅基于去过的地点)
         Map<String, Integer> moodStats = new HashMap<>();
-        
+
         // 统计去过地点的心情标签
         List<UserPlaceMemory> visitedMemories = memories.stream()
-                .filter(m -> "VISITED".equals(m.getInteractionType()) || m.getVisitedAt() != null)
-                .toList();
-        
+                .filter(m -> "VISITED".equals(m.getInteractionType()) || m.getVisitedAt() != null).toList();
+
         for (UserPlaceMemory memory : visitedMemories) {
             // 查询该地点的所有标签
             List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(memory.getPlaceId());
-            
+
             // 使用 Set 确保对于同一个地点，每种分类只计 1 次分
             Set<String> uniqueCategoriesPerVisit = new HashSet<>();
-            
+
             for (PlaceTagRelation rel : relations) {
                 emotionTagDictRepository.findById(rel.getTagId()).ifPresent(tag -> {
                     String category = mapToMainCategory(tag.getTagName());
                     uniqueCategoriesPerVisit.add(category);
                 });
             }
-            
+
             // 将该次游历涉及的分类计入总统计
             for (String category : uniqueCategoriesPerVisit) {
                 moodStats.put(category, moodStats.getOrDefault(category, 0) + 1);
             }
         }
-        
+
         // 如果没有任何统计数据，给一个默认值
         if (moodStats.isEmpty()) {
             moodStats.put("探索中", 0);
         }
-        
+
         stats.setMoodStats(moodStats);
         return stats;
     }
@@ -208,32 +208,30 @@ public class UserServiceImpl implements UserService {
      * 将细分标签映射到三大核心心情分类
      */
     private String mapToMainCategory(String tag) {
-        if (tag == null) return "平静";
-        
+        if (tag == null)
+            return "平静";
+
         // 1. 好心情系列 (充满活力、积极、治愈)
-        if (tag.contains("好心情") || tag.contains("治愈") || tag.contains("开心") || 
-            tag.contains("惊喜") || tag.contains("浪漫") || tag.contains("阳光") ||
-            tag.contains("出片") || tag.contains("精致") || tag.contains("美好") || 
-            tag.contains("chill") || tag.contains("活力")) {
+        if (tag.contains("好心情") || tag.contains("治愈") || tag.contains("开心") || tag.contains("惊喜") || tag.contains("浪漫")
+                || tag.contains("阳光") || tag.contains("出片") || tag.contains("精致") || tag.contains("美好")
+                || tag.contains("chill") || tag.contains("活力")) {
             return "好心情";
         }
-        
+
         // 2. 烦闷时系列 (发泄、出口、深沉、共鸣)
-        if (tag.contains("烦闷") || tag.contains("孤独") || tag.contains("难过") || 
-            tag.contains("想哭") || tag.contains("压抑") || tag.contains("忧郁") ||
-            tag.contains("避世") || tag.contains("隐世") || tag.contains("深夜") || 
-            tag.contains("微醺") || tag.contains("宣泄")) {
+        if (tag.contains("烦闷") || tag.contains("孤独") || tag.contains("难过") || tag.contains("想哭") || tag.contains("压抑")
+                || tag.contains("忧郁") || tag.contains("避世") || tag.contains("隐世") || tag.contains("深夜")
+                || tag.contains("微醺") || tag.contains("宣泄")) {
             return "烦闷时";
         }
-        
+
         // 3. 平静系列 (稳定、思考、休息、独处)
-        if (tag.contains("平静") || tag.contains("安静") || tag.contains("放空") || 
-            tag.contains("思考") || tag.contains("读书") || tag.contains("发呆") || 
-            tag.contains("独处") || tag.contains("放松") || tag.contains("慵懒") || 
-            tag.contains("惬意") || tag.contains("复古") || tag.contains("书香")) {
+        if (tag.contains("平静") || tag.contains("安静") || tag.contains("放空") || tag.contains("思考") || tag.contains("读书")
+                || tag.contains("发呆") || tag.contains("独处") || tag.contains("放松") || tag.contains("慵懒")
+                || tag.contains("惬意") || tag.contains("复古") || tag.contains("书香")) {
             return "平静";
         }
-        
+
         // 如果实在匹配不上，返回原标签或者归入平静
         return "平静";
     }

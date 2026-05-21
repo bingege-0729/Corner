@@ -15,10 +15,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 public class TagController {
-    
+
     @Autowired
     private TagService tagService;
-    
+
     /**
      * 查询全部标签
      */

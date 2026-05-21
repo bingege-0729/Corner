@@ -28,17 +28,19 @@ import java.nio.file.Paths;
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
-    
+
     @Autowired
     private UserService userService;
 
     static {
         String userDir = System.getProperty("user.dir");
     }
-    
+
     /**
      * 密码登录
-     * @param request 登录请求
+     * 
+     * @param request
+     *            登录请求
      * @return 登录结果
      */
     @PostMapping("/login")
@@ -51,8 +53,7 @@ public class UserController {
      * 上传头像接口
      */
     @PostMapping("/avatar/upload")
-    public Result<AvatarResponse> uploadAvatar(HttpServletRequest request,
-                                               @RequestParam("file") MultipartFile file) {
+    public Result<AvatarResponse> uploadAvatar(HttpServletRequest request, @RequestParam("file") MultipartFile file) {
         Long userId = (Long) request.getAttribute("userId");
         String url = userService.uploadAvatar(userId, file);
 
@@ -60,7 +61,7 @@ public class UserController {
         res.setAvatarUrl(url);
         return Result.success(res);
     }
-    
+
     /**
      * 退出登录
      */
@@ -70,7 +71,7 @@ public class UserController {
         userService.logout(userId);
         return Result.success();
     }
-    
+
     /**
      * 获取用户统计数据
      */

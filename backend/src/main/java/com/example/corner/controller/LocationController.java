@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.Map;
 
-
 @Slf4j
 @RestController
 @RequestMapping("/api/location")
@@ -23,12 +22,12 @@ public class LocationController {
      * 获取用户实时位置
      * 
      * @param request
-     * @param locationData 位置信息
+     * @param locationData
+     *            位置信息
      * @return
      */
     @PostMapping("/update")
-    public Result<String> updateLocation(HttpServletRequest request,
-                                         @RequestBody Map<String, Object> locationData) {
+    public Result<String> updateLocation(HttpServletRequest request, @RequestBody Map<String, Object> locationData) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("接收到位置更新请求: userId={}, data={}", userId, locationData);
 
@@ -45,11 +44,11 @@ public class LocationController {
 
         BigDecimal latitude;
         BigDecimal longitude;
-        
+
         try {
             latitude = new BigDecimal(locationData.get("latitude").toString());
             longitude = new BigDecimal(locationData.get("longitude").toString());
-            
+
             // 验证经纬度范围
             if (latitude.compareTo(new BigDecimal("-90")) < 0 || latitude.compareTo(new BigDecimal("90")) > 0) {
                 return Result.error(400, "纬度范围应在 -90 到 90 之间");
@@ -64,7 +63,7 @@ public class LocationController {
 
         // 调用服务层更新位置
         boolean success = locationService.updateLocation(userId, latitude, longitude);
-        
+
         if (success) {
             log.info("位置更新成功: userId={}, lat={}, lng={}", userId, latitude, longitude);
             return Result.success("位置更新成功");

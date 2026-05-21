@@ -16,7 +16,7 @@ public class CommonConfig {
 
     @Autowired
     private OpenAiChatModel model;
-    
+
     @Autowired
     private RedisChatMemoryRepository redisChatMemoryRepository;
 
@@ -25,11 +25,8 @@ public class CommonConfig {
      */
     @Bean
     public ChatMemoryProvider redisChatMemoryProvider() {
-        return memoryId -> MessageWindowChatMemory.builder()
-                .id(memoryId)
-                .maxMessages(30)
-                .chatMemoryStore(redisChatMemoryRepository)
-                .build();
+        return memoryId -> MessageWindowChatMemory.builder().id(memoryId).maxMessages(30)
+                .chatMemoryStore(redisChatMemoryRepository).build();
     }
 
 }

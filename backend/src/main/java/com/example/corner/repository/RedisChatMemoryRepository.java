@@ -23,7 +23,9 @@ public class RedisChatMemoryRepository implements ChatMemoryStore {
 
     /**
      * 获取会话消息
-     * @param memoryId 会话ID
+     * 
+     * @param memoryId
+     *            会话ID
      * @return 会话消息列表
      */
     @Override
@@ -40,8 +42,11 @@ public class RedisChatMemoryRepository implements ChatMemoryStore {
 
     /**
      * 更新会话消息
-     * @param memoryId 会话ID
-     * @param list 会话消息列表
+     * 
+     * @param memoryId
+     *            会话ID
+     * @param list
+     *            会话消息列表
      */
     @Override
     public void updateMessages(Object memoryId, List<ChatMessage> list) {
@@ -53,7 +58,9 @@ public class RedisChatMemoryRepository implements ChatMemoryStore {
     }
     /**
      * 删除会话消息
-     * @param memoryId 会话ID
+     * 
+     * @param memoryId
+     *            会话ID
      */
     @Override
     public void deleteMessages(Object memoryId) {

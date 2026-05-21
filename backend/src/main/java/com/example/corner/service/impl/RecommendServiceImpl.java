@@ -19,14 +19,9 @@ public class RecommendServiceImpl implements RecommendService {
 
     @Override
     public RecommendResponse recommend(Long userId, RecommendRequest request) {
-        String userMessage = String.format(
-                "userId=%d, 用户输入=%s, 纬度=%s, 经度=%s, 用户心情=%s",
-                userId,
-                request.getUserInput() != null ? request.getUserInput() : "",
-                request.getUserLat(),
-                request.getUserLng(),
-                request.getMood() != null ? request.getMood() : ""
-        );
+        String userMessage = String.format("userId=%d, 用户输入=%s, 纬度=%s, 经度=%s, 用户心情=%s", userId,
+                request.getUserInput() != null ? request.getUserInput() : "", request.getUserLat(),
+                request.getUserLng(), request.getMood() != null ? request.getMood() : "");
 
         RecommendResponse response = recommendAIService.getRecommend(userMessage, USER_MEMORY_KEY_PREFIX + userId);
 
@@ -35,12 +30,11 @@ public class RecommendServiceImpl implements RecommendService {
             String understanding = response.getUnderstanding();
 
             // 移除常见的思考过程关键词
-            understanding = understanding
-                .replaceAll("(?m)^让我.*?\\n", "")  // 移除“让我...”开头的行
-                .replaceAll("(?m)^首先.*?\\n", "")  // 移除“首先...”开头的行
-                .replaceAll("(?m)^我需要.*?\\n", "")  // 移除“我需要...”开头的行
-                .replaceAll("根据工具返回.*?[,，]", "")  // 移除“根据工具返回”
-                .trim();
+            understanding = understanding.replaceAll("(?m)^让我.*?\\n", "") // 移除“让我...”开头的行
+                    .replaceAll("(?m)^首先.*?\\n", "") // 移除“首先...”开头的行
+                    .replaceAll("(?m)^我需要.*?\\n", "") // 移除“我需要...”开头的行
+                    .replaceAll("根据工具返回.*?[,，]", "") // 移除“根据工具返回”
+                    .trim();
 
             response.setUnderstanding(understanding);
         }

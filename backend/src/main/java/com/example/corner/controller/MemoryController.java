@@ -18,17 +18,16 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/memory")
 public class MemoryController {
-    
+
     @Autowired
     private PlaceService placeService;
-    
+
     /**
      * 切换地点收藏状态（收藏/取消收藏）
      */
     @PostMapping("/{placeId}/bookmark")
-    public Result<Long> toggleBookmark(HttpServletRequest request,
-                                       @PathVariable Long placeId,
-                                       @RequestBody(required = false) PlaceCard placeCard) {
+    public Result<Long> toggleBookmark(HttpServletRequest request, @PathVariable Long placeId,
+            @RequestBody(required = false) PlaceCard placeCard) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("用户切换收藏状态: userId={}, placeId={}", userId, placeId);
         Long targetPlaceId = placeService.toggleBookmark(userId, placeId, placeCard);
@@ -45,7 +44,7 @@ public class MemoryController {
         List<PlaceCard> bookmarks = placeService.getBookmarkedPlaces(userId);
         return Result.success(bookmarks);
     }
-    
+
     /**
      * 获取用户去过的地点及对应心情（用于地图展示）
      */
@@ -53,7 +52,7 @@ public class MemoryController {
     public Result<List<Map<String, Object>>> getVisitedPlacesWithMood(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("获取用户去过的地点及心情: userId={}", userId);
-        
+
         List<Map<String, Object>> visitedPlaces = placeService.getVisitedPlacesWithMood(userId);
         return Result.success(visitedPlaces);
     }
@@ -62,8 +61,7 @@ public class MemoryController {
      * 记录用户探索意向（点击一键出行）
      */
     @PostMapping("/explore")
-    public Result<Void> recordExploration(HttpServletRequest request,
-                                          @RequestBody PlaceCard placeCard) {
+    public Result<Void> recordExploration(HttpServletRequest request, @RequestBody PlaceCard placeCard) {
         Long userId = (Long) request.getAttribute("userId");
         log.info("记录探索意向: userId={}, placeId={}", userId, placeCard.getPlaceId());
         placeService.recordExploration(userId, placeCard.getPlaceId(), placeCard);
