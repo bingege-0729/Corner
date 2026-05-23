@@ -28,8 +28,7 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable()) // 禁用 CSRF（API 项目不需要）
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll() // 允许所有请求通过
+        http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll() // 允许所有请求通过
                 );
 
         return http.build();
