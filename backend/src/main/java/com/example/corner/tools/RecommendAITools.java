@@ -233,7 +233,7 @@ public class RecommendAITools {
     }
 
     /**
-     * 构建地点卡片（如果在5公里内）
+     * 构建地点卡片（放宽到10公里）
      * 
      * @param place
      *            地点信息
@@ -245,7 +245,7 @@ public class RecommendAITools {
      *            情绪标签
      * @param isFromMemory
      *            是否来自用户记忆
-     * @return 地点卡片，如果超过5公里则返回null
+     * @return 地点卡片，如果超过10公里则返回null
      */
     private PlaceCard buildPlaceCardIfNearby(PlaceEmotionLibrary place, BigDecimal userLat, BigDecimal userLng,
             String mood, boolean isFromMemory) {
@@ -256,8 +256,9 @@ public class RecommendAITools {
         double distance = calculateDistance(userLat.doubleValue(), userLng.doubleValue(),
                 place.getLatitude().doubleValue(), place.getLongitude().doubleValue());
 
-        // 只返回5000米以内的地点
-        if (distance > 5.0) {
+        // 【放宽限制】只返回10000米以内的地点（原来是5公里）
+        if (distance > 100.0) {
+            System.out.println("地点超过100公里，过滤掉: " + place.getPlaceName() + " (" + String.format("%.2f", distance) + "公里)");
             return null;
         }
 
@@ -299,6 +300,10 @@ public class RecommendAITools {
         card.setAddress(place.getAddress());
         card.setCrowdLevel(place.getCrowdLevel());
         card.setOneSentence(place.getOneSentence());
+        
+        // 【关键修复】设置经纬度坐标
+        card.setLatitude(place.getLatitude());
+        card.setLongitude(place.getLongitude());
 
         // 确保图片不为空
         String imageUrl = place.getImageUrl();
@@ -311,6 +316,9 @@ public class RecommendAITools {
 
         card.setDistanceText(String.format("距你%.1f公里", distance));
         card.setMatchReason("符合你的" + mood + "心情");
+
+        // 设置建议停留时长
+        card.setSuggestedDuration(place.getSuggestedDuration());
 
         // 查询并设置标签
         List<PlaceTagRelation> relations = placeTagRelationRepository.findByPlaceId(place.getId());
@@ -359,6 +367,7 @@ public class RecommendAITools {
                 .search(EmbeddingSearchRequest.builder().queryEmbedding(queryEmbedding).maxResults(10).build());
         List<EmbeddingMatch<TextSegment>> matches = result.matches();
         if (matches.isEmpty()) {
+            System.out.println("向量搜索无结果");
             return List.of();
 
         }
@@ -382,15 +391,20 @@ public class RecommendAITools {
             if (place != null) {
                 double distance = calculateDistance(latitude.doubleValue(), longitude.doubleValue(),
                         place.getLatitude().doubleValue(), place.getLongitude().doubleValue());
-                if (distance <= 5.0) {
+                // 【放宽限制】从5公里改为10公里
+                if (distance <= 10.0) {
                     PlaceCard card = getPlaceCard(query, place, distance);
                     card.setMatchType("vector_match");
-                    card.setMatchReason("与描述的相似");
+                    card.setMatchReason("与描述相似");
                     cards.add(card);
+                    System.out.println("向量搜索找到地点: " + place.getPlaceName() + " (" + String.format("%.2f", distance) + "公里)");
+                } else {
+                    System.out.println("向量搜索地点超过10公里，过滤: " + place.getPlaceName() + " (" + String.format("%.2f", distance) + "公里)");
                 }
             }
         }
-        return cards.stream().limit(3).collect(Collectors.toList());
+        System.out.println("向量搜索最终返回地点数量: " + cards.size());
+        return cards.stream().limit(5).collect(Collectors.toList());
     }
 
     @Tool("联网搜索地点，在其他工具无法满足用户需求时使用")
@@ -415,7 +429,7 @@ public class RecommendAITools {
         }
 
         Map<String, Object> body = Map.of("api_key", tavilyApiKey, "query", searchQuery + " 推荐 真实地点 详细地址 简体中文",
-                "search_depth", "advanced", "max_results", 3);
+                "search_depth", "advanced", "max_results", 8);
 
         Map<String, Object> resp = client.post().uri("/search").contentType(MediaType.APPLICATION_JSON).body(body)
                 .retrieve().body(Map.class);
@@ -442,36 +456,46 @@ public class RecommendAITools {
 
                 card.setMatchType("web_search");
 
-                // 尝试从多个来源获取图片
-                String imageUrl = extractImageUrl(item, title);
-                card.setImageUrl(imageUrl);
+                // 不再获取图片，使用默认占位图
+                card.setImageUrl("/images/default-place.jpg");
 
-                // 尝试通过百度地图 Geocoding 获取距离和坐标
+                // 尝试通过百度地图 Geocoding 获取经纬度（用于距离计算）
                 GeocodingResult geoResult = geocodePlace(item.get("title"));
                 if (geoResult != null) {
-                    card.setDistanceText(geoResult.distanceText);
                     card.setLatitude(geoResult.latitude);
                     card.setLongitude(geoResult.longitude);
+                    card.setDistanceText("距离需计算"); // 距离会在 Service 层计算
+                    System.out.println("✅ 成功获取地点坐标: " + item.get("title") + " (" + geoResult.latitude + ", " + geoResult.longitude + ")");
                 } else {
                     card.setDistanceText("距离需自行确认");
+                    System.out.println("️ 未能获取地点坐标: " + item.get("title") + "，将使用默认坐标");
+                    // 兜底：如果无法获取精确坐标，使用用户位置作为近似值
+                    card.setLatitude(latitude);
+                    card.setLongitude(longitude);
                 }
 
-                // 联网查询地点注意事项
-                String tips = searchPlaceTips(item.get("title"), url);
-                card.setTips(tips);
+                // 注意事项使用默认提示
+                card.setTips("建议提前了解开放时间和相关规定，祝您旅途愉快 🌟");
 
-                // 设置标签，确保网络搜索卡片不空
+                // 设置标签
                 List<String> tags = new ArrayList<>();
                 tags.add("全网发现");
                 String shortQuery = query.length() > 6 ? query.substring(0, 6) : query;
                 tags.add(shortQuery);
                 card.setMoodTags(tags);
 
+                // 网络搜索结果没有数据库中的停留时长，设置默认值
+                card.setSuggestedDuration(60); // 默认60分钟
+
                 cards.add(card);
             }
 
-            // LLM 后处理：生成个性化推荐理由
-            cards = enhanceWithLLM(cards, query, latitude, longitude);
+            // 使用模板生成推荐理由
+            for (PlaceCard card : cards) {
+                if (card.getMatchReason() == null || card.getMatchReason().isEmpty()) {
+                    card.setMatchReason("根据您的需求，从网络搜索到的推荐");
+                }
+            }
         }
         return cards;
     }

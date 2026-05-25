@@ -40,4 +40,7 @@ public class PlaceEmotionLibrary {
     private String imageUrl; // 图片URL
 
     private String tips; // 小贴士
+
+    @Column(name = "suggested_duration")
+    private Integer suggestedDuration;
 }

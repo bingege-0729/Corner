@@ -3,12 +3,12 @@ spring:
     name: Corner
   data:
     redis:
-      host: 192.168.181.128
+      host: localhost
       port: 6379
   datasource:
     url: jdbc:mysql://localhost:3306/corner_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
-    password: root
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -28,22 +28,22 @@ langchain4j:
       api-key: ${TAVILY_API_KEY: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}
   openai:
     chat-model:
-      base-url: https://api.deepseek.com/v1
-      api-key: sk-1d01ad72852447b599e3baeea90be6a6
-      model-name: deepseek-chat
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${QWEN_API_KEY}
+      model-name: qwen-max
       #开启log日志
       log-requests: true
       log-responses: true
     streaming-chat-model:
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-      api-key: ${OPENAI_API_KEY:sk-86dca570ca514666af4406c5f8c01c3a}
-      model-name: qwen-turbo
+      api-key: ${QWEN_API_KEY}
+      model-name: qwen-max
       #开启log日志
       log-requests: true
       log-responses: true
     embedding-model:
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-      api-key: ${OPENAI_API_KEY:sk-86dca570ca514666af4406c5f8c01c3a}
+      api-key: ${QWEN_API_KEY}
       model-name: text-embedding-v3
       dimension: 1024
       #开启log日志
@@ -52,7 +52,7 @@ langchain4j:
       max-segments-per-batch: 10
   community:
     redis:
-      host: 192.168.181.128
+      host: localhost
       port: 6379
 jwt:
   secret: your-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
@@ -76,7 +76,7 @@ baidu:
 # AccuWeather API配置
 accuweather:
   api:
-    key: ${ACCUWEATHER_API_KEY}
+    key: ${ACCUWEATHER_API_KEY:zpka_46019757fd7d4f799662759421bc4402_1e7adcf9}
     current-url: http://dataservice.accuweather.com/currentconditions/v1/
     locations-url: http://dataservice.accuweather.com/locations/v1/cities/geoposition/search
 

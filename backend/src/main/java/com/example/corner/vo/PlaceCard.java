@@ -24,4 +24,5 @@ public class PlaceCard {
     private BigDecimal longitude;
     private String status;
     private Boolean visited; // 是否已游历
+    private Integer suggestedDuration; // 建议停留时长（分钟）
 }
