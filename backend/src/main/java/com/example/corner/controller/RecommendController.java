@@ -52,4 +52,21 @@ public class RecommendController {
         Long userId = (Long) request.getAttribute("userId");
         return chatService.chat(userId, recommendRequest);
     }
+
+    /**
+     * 路线规划接口（基于情绪+时空）
+     * 
+     * @param request
+     *            HTTP请求对象
+     * @param recommendRequest
+     *            请求DTO（包含当前位置、情绪等信息）
+     * @return 带时间轴的路线规划响应
+     */
+    @PostMapping("/plan-route")
+    public Result<RecommendResponse> planRoute(HttpServletRequest request,
+            @RequestBody RecommendRequest recommendRequest) {
+        Long userId = (Long) request.getAttribute("userId");
+        RecommendResponse response = recommendService.planRoute(userId, recommendRequest);
+        return Result.success(response);
+    }
 }

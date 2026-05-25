@@ -1,7 +1,9 @@
 package com.example.corner.dto;
 
+import com.example.corner.vo.PlaceCard;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class RecommendRequest {
@@ -12,4 +14,5 @@ public class RecommendRequest {
     private BigDecimal userLat; // 用户纬度
     private BigDecimal userLng; // 用户精度
     private Boolean enableStream; // 是否启用流式输出（用于对话模式）
+    private List<PlaceCard> existingPlaces; // 已有的地点列表（用于路线规划，避免重复调用AI）
 }
