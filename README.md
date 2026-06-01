@@ -1,250 +1,115 @@
-# Corner 项目说明
+<p align="center">
+  <h1 align="center">� Corner</h1>
+  <p align="center">
+    <strong>情绪驱动的智能地点推荐系统</strong>
+  </p>
+  <p align="center">
+    根据你的心情，找到属于你的"治愈角落"
+  </p>
+</p>
 
-## 项目简介
-Corner 是一个基于情绪推荐的地点推荐系统，根据用户当前的心情和状态，推荐适合的情绪地点。
+---
 
-## 技术栈
-### 后端
-- Spring Boot 3.5.14
-- Java 17
-- MySQL 8.0+
-- JPA/Hibernate
-- JWT (jjwt 0.12.5)
-- Lombok
-- Redis (用于会话记忆存储和向量数据库)
-- LangChain4j (AI集成框架)
-- DeepSeek/Qwen (大语言模型)
-- Baidu Map API (地理位置服务)
-- AccuWeather API (天气服务)
+<div align="center">
 
-### 前端
-- Vue 3.5.32
-- Vite 5.4.10
-- Axios 1.16.0
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.14-green?logo=springboot&logoColor=white)
+![Vue.js](https://img.shields.io/badge/Vue.js-3.5.32-4FC08D?logo=vuedotjs&logoColor=white)
+![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-6.0+-DC3828?logo=redis&logoColor=white)
+![LangChain4j](https://img.shields.io/badge/LangChain4j-AI-blue)
+![Qwen](https://img.shields.io/badge/Qwen-LLM-purple)
 
-## 项目结构
+[功能特性](#-核心特性) · [快速开始](#-快速开始) · [技术架构](#-技术架构) · [API 文档](#-api-接口) · [项目结构](#-项目结构)
+
+</div>
+
+---
+
+## ✨ 核心特性
+
+### 🧠 AI 情绪理解
+- 基于大语言模型（Qwen/DeepSeek）深度解析用户情绪状态
+- 支持自然语言输入，智能提取情绪关键词
+- 温暖贴心的 AI 安慰话术生成
+
+### � 三层推荐引擎
 ```
-Corner/
-├── backend/                    # 后端项目
-│   ├── src/main/java/com/example/corner/
-│   │   ├── common/              # 通用类
-│   │   │   ├── RedisConstant.java    # Redis常量定义
-│   │   │   ├── Result.java           # 统一响应格式
-│   │   │   └── ResultCode.java       # 响应状态码
-│   │   ├── config/              # 配置类
-│   │   │   ├── CommonConfig.java     # 通用配置（Bean定义）
-│   │   │   ├── GlobalExceptionHandler.java # 全局异常处理
-│   │   │   ├── PlaceVectorLoader.java  # 地点向量加载器
-│   │   │   └── WebConfig.java        # Web配置（拦截器）
-│   │   ├── controller/          # 控制器
-│   │   │   ├── LocationController.java # 位置相关接口
-│   │   │   ├── MemoryController.java   # 记忆相关接口
-│   │   │   ├── PlaceController.java    # 地点相关接口
-│   │   │   ├── RecommendController.java # 推荐相关接口
-│   │   │   ├── TagController.java      # 标签相关接口
-│   │   │   └── UserController.java     # 用户相关接口
-│   │   ├── dto/                 # 数据传输对象
-│   │   │   ├── LoginRequest.java
-│   │   │   └── RecommendRequest.java
-│   │   ├── entity/              # 实体类
-│   │   │   ├── EmotionTagDict.java
-│   │   │   ├── PlaceEmotionLibrary.java
-│   │   │   ├── PlaceTagRelation.java
-│   │   │   ├── UserInfo.java
-│   │   │   ├── UserMoodRecord.java
-│   │   │   └── UserPlaceMemory.java
-│   │   ├── interceptor/         # 拦截器
-│   │   │   └── AuthInterceptor.java # JWT认证拦截器
-│   │   ├── repository/          # 数据访问层
-│   │   │   ├── EmotionTagDictRepository.java
-│   │   │   ├── PlaceEmotionLibraryRepository.java
-│   │   │   ├── PlaceTagRelationRepository.java
-│   │   │   ├── RedisChatMemoryRepository.java # Redis聊天记忆仓库
-│   │   │   ├── UserInfoRepository.java
-│   │   │   ├── UserMoodRecordRepository.java
-│   │   │   └── UserPlaceMemoryRepository.java
-│   │   ├── service/             # 业务逻辑层
-│   │   │   ├── aiService/            # AI服务
-│   │   │   │   └── RecommendAIService.java # AI推荐服务
-│   │   │   ├── impl/                 # 服务实现
-│   │   │   │   ├── BaiduMapServiceImpl.java
-│   │   │   │   ├── ChatServiceImpl.java
-│   │   │   │   ├── LocationServiceImpl.java
-│   │   │   │   ├── MemoryServiceImpl.java
-│   │   │   │   ├── PlaceServiceImpl.java
-│   │   │   │   ├── RecommendServiceImpl.java
-│   │   │   │   ├── TagServiceImpl.java
-│   │   │   │   └── UserServiceImpl.java
-│   │   │   ├── BaiduMapService.java
-│   │   │   ├── ChatService.java
-│   │   │   ├── LocationService.java
-│   │   │   ├── MemoryService.java
-│   │   │   ├── PlaceService.java
-│   │   │   ├── PlaceVectorData.java
-│   │   │   ├── RecommendService.java
-│   │   │   ├── TagService.java
-│   │   │   └── UserService.java
-│   │   ├── tools/               # AI工具类
-│   │   │   └── RecommendAITools.java # AI推荐工具类
-│   │   ├── util/                # 工具类
-│   │   │   └── JwtUtil.java     # JWT工具
-│   │   └── vo/                  # 视图对象
-│   │       ├── AvatarResponse.java
-│   │       ├── LoginResponse.java
-│   │       ├── PlaceCard.java
-│   │       ├── PlaceDetailResponse.java
-│   │       ├── RecommendResponse.java
-│   │       ├── TagResponse.java
-│   │       ├── TravelTipCard.java
-│   │       ├── UserHistory.java
-│   │       └── UserStatsResponse.java
-│   └── src/main/resources/
-│       ├── db/
-│       │   └── init.sql         # 数据库初始化脚本
-│       └── application.yaml     # 应用配置
-├── frontend/                   # 前端项目
-│   ├── src/
-│   │   ├── api/                # API接口
-│   │   │   └── index.js
-│   │   ├── assets/             # 静态资源
-│   │   │   ├── css/
-│   │   │   │   └── main.css
-│   │   │   └── img/
-│   │   │       └── bg.png
-│   │   ├── components/         # 公共组件
-│   │   │   ├── BottomNav.vue   # 底部导航
-│   │   │   └── TopBar.vue      # 顶部栏
-│   │   ├── views/              # 页面视图
-│   │   │   ├── Detail.vue      # 地点详情页
-│   │   │   ├── Discover.vue    # 发现页
-│   │   │   ├── GoTo.vue        # 前往页面
-│   │   │   ├── Login.vue       # 登录页
-│   │   │   ├── Memory.vue      # 记忆页
-│   │   │   ├── Profile.vue     # 个人中心
-│   │   │   ├── Recommend.vue   # 推荐页
-│   │   │   └── Result.vue      # 结果页
-│   │   ├── App.vue             # 根组件
-│   │   ├── axios.js            # Axios配置
-│   │   └── main.js             # 入口文件
-│   ├── public/                 # 公共资源
-│   │   ├── images/
-│   │   │   └── default-place.jpg
-│   │   └── favicon.ico
-│   ├── package.json            # 前端依赖配置
-│   └── vite.config.js          # Vite配置
-├── uploads/                    # 上传文件目录
-│   └── avatars/                # 头像上传目录
-├── .env                        # 环境变量配置
-├── Corner接口文档0514.md       # 接口文档
-└── 修改日志.md                 # 修改日志
+本地数据库匹配 → 向量语义搜索 → 实时联网搜索
+     ↓               ↓                ↓
+ (标签+距离)    (Embedding相似度)   (Tavily API)
 ```
+- **第一层**：基于情绪标签 + 地理距离的精准匹配
+- **第二层**：向量数据库语义相似度检索
+- **第三层**：实时联网搜索补充更多选择
 
-## API 接口列表
+### 💾 智能记忆系统
+| 类型 | 说明 |
+|:---:|:---|
+| ✅ 已访问 | 记录心情与评分，形成个人足迹 |
+| ⭐ 已收藏 | 优先推荐，个性化体验升级 |
+| ❌ 不喜欢 | 自动排除，持续优化推荐质量 |
 
-### 1. 手机号登录
-- **路径**: `POST /api/user/login`
-- **说明**: 不需要登录，自动注册或登录
-- **请求体**:
-```json
-{
-  "phone": "13800138001"
-}
-```
-- **响应**:
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "user_id": 1,
-    "nickname": "小明",
-    "token": "xxx"
-  }
-}
-```
+### 📍 LBS 位置服务
+- GPS 定位 + 百度地图地理编码
+- 智能距离计算（Haversine 公式）
+- 一键导航跳转
 
-### 2. 获取全部标签
-- **路径**: `GET /api/tags`
-- **说明**: 不需要登录
-- **响应**:
-```json
-{
-  "code": 200,
-  "data": {
-    "tags": [
-      { "id": 1, "tag_name": "安静", "category": "氛围" }
-    ]
-  }
-}
-```
+### 🌤️ 天气感知
+- 集成 AccuWeather API 实时天气
+- 结合天气条件优化推荐策略
 
-### 3. 核心推荐
-- **路径**: `POST /api/recommend`
-- **说明**: 需要登录，Header 带 `Authorization: Bearer <token>`
-- **请求体**:
-```json
-{
-  "mood": "烦闷",
-  "energy_level": 3,
-  "social_level": 2,
-  "user_input": null,
-  "user_lat": 22.5431,
-  "user_lng": 113.9526
-}
-```
-- **响应**:
-```json
-{
-  "code": 200,
-  "data": {
-    "understanding": "懂了，你需要安静地待一会儿",
-    "memory_matches": [...],
-    "emotion_matches": [...]
-  }
-}
-```
+---
 
-### 4. 推荐反馈
-- **路径**: `POST /api/place/feedback`
-- **说明**: 需要登录
-- **请求体**:
-```json
-{
-  "place_id": 1,
-  "action": "liked",
-  "feedback": "真的很放松",
-  "rating": 5
-}
-```
-- **action 值映射**:
-  - `liked` → `BOOKMARKED`
-  - `disliked` → `DISLIKED`
-  - `visited` → `VISITED`
+## 🚀 快速开始
 
-### 5. 我的记忆列表
-- **路径**: `GET /api/memory/list?type=visited`
-- **说明**: 需要登录
-- **参数**: `type` 可选，值为 `visited` / `bookmarked`，不传返回全部
+### 环境要求
 
-### 6. 地点详情
-- **路径**: `GET /api/place/detail/{place_id}`
-- **说明**: 需要登录
+| 组件 | 版本要求 |
+|:---:|:---|
+| JDK | 17+ |
+| Maven | 3.6+ |
+| MySQL | 8.0+ |
+| Redis | 6.0+ |
 
-## 快速开始
+### 一键启动
 
-### 1. 环境要求
-- JDK 17+
-- Maven 3.6+
-- MySQL 8.0+
-- Redis 6.0+（用于会话记忆存储和向量数据库）
+<details>
+<summary><b>📦 克隆 & 安装依赖</b></summary>
 
-### 2. 数据库和Redis配置
-1. 创建数据库并导入初始数据：
 ```bash
-mysql -u root -p < backend/src/main/resources/db/init.sql
+git clone https://github.com/your-username/corner.git
+cd corner
 ```
 
-2. 修改 `application.yaml` 中的数据库配置：
+**后端**
+```bash
+cd backend
+mvn clean install -DskipTests
+```
+
+**前端**
+```bash
+cd frontend
+npm install
+```
+
+</details>
+
+<details>
+<summary><b>⚙️ 配置环境变量</b></summary>
+
+创建 `.env` 文件：
+
+```env
+OPENAI_API_KEY=your_dashscope_api_key
+TAVILY_API_KEY=your_tavily_api_key
+BAIDU_MAP_API_KEY=your_baidu_map_api_key
+ACCUWEATHER_API_KEY=your_accuweather_api_key
+```
+
+修改 `backend/src/main/resources/application.yaml`：
+
 ```yaml
 spring:
   datasource:
@@ -255,181 +120,371 @@ spring:
     redis:
       host: localhost
       port: 6379
-```
 
-3. **启动 Redis 服务**（必需）：
-
-**使用 Docker（推荐）**：
-```bash
-docker run -d -p 6379:6379 --name redis redis
-```
-
-**或本地启动**：
-```bash
-redis-server
-```
-
-验证 Redis 是否运行：
-```bash
-redis-cli ping
-# 应返回 PONG
-```
-
-4. 配置 API 密钥（在 `.env` 文件中）：
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-TAVILY_API_KEY=your_tavily_api_key_here
-BAIDU_MAP_API_KEY=your_baidu_map_api_key_here
-ACCUWEATHER_API_KEY=your_accuweather_api_key_here
-UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
-PEXELS_API_KEY=your_pexels_api_key_here
-```
-
-5. 修改 JWT 密钥（至少32字符）：
-```yaml
 jwt:
   secret: your-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
 ```
 
-### 3. 运行项目
-#### 后端启动
+</details>
+
+<details>
+<summary><b>🗄️ 初始化数据库</b></summary>
+
+```bash
+mysql -u root -p < backend/src/main/resources/db/init.sql
+```
+
+启动 Redis：
+```bash
+docker run -d -p 6379:6379 --name corner-redis redis
+```
+
+</details>
+
+<details>
+<summary><b>▶️ 启动服务</b></summary>
+
+**终端 1 - 后端**
 ```bash
 cd backend
 mvn spring-boot:run
 ```
+后端运行在 `http://localhost:8080`
 
-**注意**：首次启动时，应用会自动初始化地点向量数据到 Redis，请确保 Redis 服务已启动。
-
-#### 前端启动
+**终端 2 - 前端**
 ```bash
 cd frontend
-npm install
 npm run dev
 ```
+前端运行在 `http://localhost:5173`
 
-前端默认运行在 http://localhost:5173
+</details>
 
-### 4. 测试接口
-使用 Postman 或其他 API 测试工具测试接口。
+---
 
-**登录示例**:
-```bash
-curl -X POST http://localhost:8080/api/user/login \
-  -H "Content-Type: application/json" \
-  -d '{"phone":"13800138001"}'
+## 🏗️ 技术架构
+
+### 系统架构图
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                         用户层                                │
+│                    Vue 3 SPA (Mobile First)                   │
+└──────────────────────────┬───────────────────────────────────┘
+                           │ HTTP / SSE
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│                       API 网关层                              │
+│              Spring Boot (:8080) + Vite Proxy                 │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌────────────┐  ┌────────────┐  ┌────────────────────────┐ │
+│  │ Auth       │  │ Recommend  │  │ Chat (SSE Stream)      │ │
+│  │ Interceptor│  │ Controller│  │ Controller             │ │
+│  └─────┬──────┘  └─────┬──────┘  └───────────┬────────────┘ │
+│        │               │                      │              │
+│  ┌─────▼──────┐  ┌─────▼──────────────────────▼────────────┐ │
+│  │           Service Layer (Business Logic)                  │ │
+│  │  ┌─────────────────┐  ┌─────────────────────────────┐   │ │
+│  │  │ RecommendService│  │ LangChain4j AI Service      │   │ │
+│  │  │ MemoryService   │  │ ├─ Tool: Local DB Search    │   │ │
+│  │  │ PlaceService    │  │ ├─ Tool: Vector Search      │   │ │
+│  │  │ LocationService │  │ └─ Tool: Web Search         │   │ │
+│  │  └─────────────────┘  └─────────────────────────────┘   │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└──────────────────────────┬───────────────────────────────────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+┌──────────────┐  ┌──────────────┐  ┌──────────────────┐
+│   MySQL 8.0  │  │   Redis 6.0  │  │  External APIs   │
+│  (地点数据)   │  │              │  │                  │
+│  (用户数据)   │  │ ├─ 向量存储   │  │ ├─ 阿里云 Qwen   │
+│  (标签字典)   │  │ ├─ 会话记忆   │  │ ├─ Tavily 搜索   │
+│              │  │ └─ 缓存       │  │ ├─ 百度地图      │
+│              │  │              │  │ └─ AccuWeather   │
+└──────────────┘  └──────────────┘  └──────────────────┘
 ```
 
-**获取标签示例**:
-```bash
-curl http://localhost:8080/api/tags
+### 推荐流程时序图
+
+```
+用户          前端            后端              AI服务           工具链
+ │             │               │                │                │
+ │ 选择情绪     │               │                │                │
+ │ 点击推荐     │               │                │                │
+ │────────────→│ POST /recommend│                │                │
+ │             │──────────────→│                │                │
+ │             │               │ 解析请求        │                │
+ │             │               │──────────────→ │                │
+ │             │               │  getRecommend() │                │
+ │             │               │                │──────────────→ │
+ │             │               │                │ Step1: 本地DB  │
+ │             │               │                │ ←───────────── │
+ │             │               │                │ 返回 1-2 个结果 │
+ │             │               │                │──────────────→ │
+ │             │               │                │ Step2: 向量搜索│
+ │             │               │                │ ←───────────── │
+ │             │               │                │ 返回相似地点   │
+ │             │               │                │──────────────→ │
+ │             │               │                │ Step3: 联网搜索│
+ │             │               │                │ ←───────────── │
+ │             │               │                │ 返回在线地点   │
+ │             │               │                │ 合并去重 ≥3个  │
+ │             │               │←───────────────│                │
+ │             │ JSON Response │                │                │
+ │←────────────│               │                │                │
+ │ 展示结果     │               │                │                │
 ```
 
-**推荐示例**（需要先登录获取 token）:
-```bash
-curl -X POST http://localhost:8080/api/recommend \
-  -H "Authorization: Bearer <your_token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "mood": "烦闷",
-    "user_lat": 22.5431,
-    "user_lng": 113.9526
-  }'
+---
+
+## 📡 API 接口
+
+### 认证接口
+
+#### 手机号登录
+```http
+POST /api/user/login
+Content-Type: application/json
+
+{
+  "phone": "13800138001"
+}
 ```
 
-## 核心功能模块
+**响应**
+```json
+{
+  "code": 200,
+  "data": {
+    "user_id": 1,
+    "nickname": "小明",
+    "token": "eyJhbGciOiJIUzI1NiJ9..."
+  }
+}
+```
 
-### 1. 用户认证模块
+---
+
+### 推荐接口
+
+#### 核心推荐
+```http
+POST /api/recommend
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "mood": "烦闷",
+  "energy_level": 3,
+  "social_level": 2,
+  "user_input": "我想找个安静的地方一个人待着",
+  "user_lat": 22.5431,
+  "user_lng": 113.9526
+}
+```
+
+**响应**
+```json
+{
+  "code": 200,
+  "data": {
+    "understanding": "听起来你今天有点累呢，找个安静的地方放松一下吧～",
+    "emotionMatches": [
+      {
+        "placeId": 1,
+        "name": "静谧咖啡馆",
+        "description": "...",
+        "tags": ["安静", "治愈"],
+        "distanceKm": 1.2,
+        "imageUrl": "..."
+      }
+    ]
+  }
+}
+```
+
+#### 流式对话
+```http
+POST /api/chat
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "message": "还有更近的吗？",
+  "memoryId": "user_1"
+}
+```
+
+**响应**: Server-Sent Events (SSE) 流式输出
+
+---
+
+### 数据接口
+
+| 方法 | 路径 | 说明 | 认证 |
+|:---:|:---|:---|:---:|
+| GET | `/api/tags` | 获取全部情绪标签 | ❌ |
+| GET | `/api/memory/list` | 我的记忆列表 | ✅ |
+| POST | `/api/place/feedback` | 地点反馈 | ✅ |
+| GET | `/api/place/detail/{id}` | 地点详情 | ✅ |
+
+---
+
+## 📁 项目结构
+
+```
+Corner/
+├── backend/                          # Spring Boot 后端
+│   ├── src/main/java/com/example/corner/
+│   │   ├── config/                   # 配置类
+│   │   │   ├── GlobalExceptionHandler.java
+│   │   │   ├── WebConfig.java
+│   │   │   └── PlaceVectorLoader.java
+│   │   ├── controller/               # REST 控制器
+│   │   │   ├── RecommendController.java
+│   │   │   ├── UserController.java
+│   │   │   └── ...
+│   │   ├── service/
+│   │   │   ├── aiService/           # AI 服务层
+│   │   │   │   └── RecommendAIService.java
+│   │   │   └── impl/                # 业务实现
+│   │   ├── tools/                   # AI 工具定义
+│   │   │   └── RecommendAITools.java
+│   │   ├── entity/                  # JPA 实体
+│   │   ├── repository/              # 数据访问层
+│   │   ├── vo/                      # 视图对象
+│   │   └── util/                    # 工具类
+│   └── src/main/resources/
+│       ├── db/init.sql              # 数据库初始化脚本
+│       └── application.yaml         # 应用配置
+│
+├── frontend/                         # Vue 3 前端
+│   ├── src/
+│   │   ├── api/index.js             # API 封装
+│   │   ├── components/              # 公共组件
+│   │   │   ├── BottomNav.vue
+│   │   │   └── TopBar.vue
+│   │   ├── views/                   # 页面视图
+│   │   │   ├── Recommend.vue        # 推荐（首页）
+│   │   │   ├── Result.vue           # 结果页
+│   │   │   ├── Detail.vue           # 详情页
+│   │   │   ├── Login.vue            # 登录
+│   │   │   ├── Memory.vue           # 记忆
+│   │   │   ├── Discover.vue         # 发现
+│   │   │   └── Profile.vue          # 个人中心
+│   │   └── App.vue                  # 根组件
+│   └── vite.config.js
+│
+├── .env                             # 环境变量
+└── README.md                        # 本文件
+```
+
+---
+
+## 🔧 技术栈详解
+
+### 后端技术栈
+
+| 技术 | 用途 | 版本 |
+|:---:|:---|:---:|
+| **Spring Boot** | 应用框架 | 3.5.14 |
+| **Spring Data JPA** | ORM / 数据访问 | - |
+| **Spring Security** | JWT 认证 | - |
+| **Redis** | 向量存储 / 缓存 / 会话记忆 | 6.0+ |
+| **MySQL** | 关系型数据库 | 8.0+ |
+| **LangChain4j** | AI 集成框架 | latest |
+| **Qwen / DeepSeek** | 大语言模型 | - |
+| **Tavily API** | 联网搜索 | - |
+| **Baidu Map API** | 地理位置 / 导航 | - |
+
+### 前端技术栈
+
+| 技术 | 用途 | 版本 |
+|:---:|:---|:---:|
+| **Vue 3** | 渐进式框架 | 3.5.32 |
+| **Vite** | 构建工具 | 5.4.10 |
+| **Axios** | HTTP 客户端 | 1.16.0 |
+| **Fetch API** | SSE 流式请求 | Native |
+
+---
+
+## 📊 核心模块说明
+
+### 1️⃣ 用户认证模块
 - 手机号一键登录/注册
-- JWT Token 认证
-- 基于拦截器的权限控制
-- 用户信息管理（头像、昵称等）
+- JWT Token 无状态认证
+- 基于拦截器的统一权限控制
 
-### 2. 智能推荐模块
-- 基于情绪标签的地点推荐
-- 集成 LangChain4j AI 服务（DeepSeek/Qwen模型）
-- 结合用户历史记忆的个性化推荐
-- 多维度匹配算法（情绪、距离、历史行为）
-- 支持自然语言输入理解
+### 2️⃣ 智能推荐模块
+- 多维度匹配算法（情绪 × 距离 × 历史）
+- 三层递进式搜索策略
+- 强制工具调用机制（防止 AI 幻觉）
 
-### 3. 地点管理模块
-- 地点详情查询
-- 用户反馈收集（喜欢/不喜欢/已访问）
-- 地点与情绪标签关联
-- 地点图片展示
+### 3️⃣ 向量检索模块
+- 基于 Redis 的向量数据库
+- text-embedding-v3 模型（1024 维）
+- 应用启动自动初始化向量数据
+- 余弦相似度语义搜索
 
-### 4. 记忆系统模块
-- 用户访问记录管理
-- 收藏地点管理
-- 基于 Redis 的会话记忆存储
-- 用户心情记录
+### 4️⃣ 记忆系统模块
+- 用户行为追踪（访问/收藏/不喜欢）
+- 基于 Redis 的会话级聊天记忆
+- 长期偏好学习
 
-### 5. 标签系统模块
-- 情绪标签字典管理
-- 地点标签关联查询
-- 标签分类管理
+### 5️⃣ 位置服务模块
+- GPS / IP 双模式定位
+- 地理编码与逆地理编码
+- Haversine 距离计算
 
-### 6. 向量检索模块
-- 基于 Redis 的向量数据库存储地点描述向量
-- 使用 text-embedding-v3 模型生成 1024 维向量
-- 应用启动时自动初始化官方地点向量数据
-- 支持语义相似度搜索，实现智能地点推荐
+---
 
-### 7. 位置服务模块
-- 集成百度地图API
-- IP定位功能
-- 地理编码/逆地理编码
-- 距离计算
+## ⚠️ 重要注意事项
 
-### 8. 天气服务模块
-- 集成 AccuWeather API
-- 实时天气信息查询
-- 基于位置的天气推荐
+| 项目 | 说明 |
+|:---|:---|
+| **Redis 必需** | 应用无法在无 Redis 环境下启动（向量存储 + 会话记忆） |
+| **API 密钥** | 所有密钥需在 `.env` 文件中配置，不可提交至代码仓库 |
+| **JWT 密钥** | 生产环境必须使用至少 256 位的强随机密钥 |
+| **向量维度** | embedding dimension 必须与模型匹配（text-embedding-v3 = 1024） |
+| **CORS** | 开发环境已配置跨域，生产环境需调整允许的域名 |
 
-### 9. 前端功能模块
-- 响应式移动端界面设计
-- 底部导航栏组件
-- 顶部栏组件
-- 多个页面视图（登录、发现、推荐、记忆、个人中心等）
-- Axios HTTP客户端封装
+---
 
-## 注意事项
+## 🗺️ 开发路线图
 
-1. **API 密钥配置**: 在 `.env` 文件中配置所有必需的 API 密钥：
-   - `OPENAI_API_KEY`: OpenAI/DashScope API密钥
-   - `TAVILY_API_KEY`: Tavily搜索API密钥
-   - `BAIDU_MAP_API_KEY`: 百度地图API密钥
-   - `ACCUWEATHER_API_KEY`: AccuWeather天气API密钥
-   - `UNSPLASH_ACCESS_KEY`: Unsplash图片API密钥（可选）
-   - `PEXELS_API_KEY`: Pexels图片API密钥（可选）
-2. **数据库密码**: 根据实际情况修改数据库密码
-3. **Redis 服务**: 
-   - **必须启动 Redis 服务**，否则应用无法启动
-   - Redis 用于两部分功能：
-     - 会话记忆存储（ChatMemory）
-     - 向量数据库（EmbeddingStore）存储地点向量
-4. **JWT 密钥**: 生产环境务必修改为强密钥（至少32字符）
-5. **向量维度配置**: `application.yaml` 中 `langchain4j.openai.embedding-model.dimension` 需与使用的 embedding 模型匹配（text-embedding-v3 为 1024 维）
-6. **距离计算**: 使用了简化的 Haversine 公式计算距离
-7. **图片资源**: 需要自行准备图片资源或配置外部图片API密钥
-8. **前后端分离**: 项目采用前后端分离架构，需分别启动后端和前端服务
-9. **CORS配置**: 开发环境下已配置跨域支持，生产环境需根据实际域名调整
+### ✅ 已完成
+- [x] DeepSeek / Qwen LLM 集成
+- [x] 三层推荐引擎实现
+- [x] 百度地图位置服务
+- [x] AccuWeather 天气集成
+- [x] Vue 3 前端完整页面
+- [x] JWT 认证系统
+- [x] 向量数据库检索
+- [x] SSE 流式对话
 
-## 后续优化方向
+### 🚧 进行中
+- [ ] 推荐结果数量稳定性优化
+- [ ] 用户画像长期分析
 
-1. ✅ 已完成 DeepSeek/Qwen LLM 集成，实现情绪解析和文案生成
-2. ✅ 已完成百度地图API集成，提供位置服务
-3. ✅ 已完成AccuWeather API集成，提供天气信息
-4. ✅ 已完成前端Vue3项目搭建，实现主要页面功能
-5. 优化推荐算法，增加更多维度的匹配（时间、天气、用户偏好等）
-6. 添加缓存机制提升性能（地点信息、标签数据等）
-7. 增加日志记录和异常处理
-8. 添加单元测试和集成测试
-9. 实现更精确的距离计算和地图服务功能
-10. 增加用户画像系统，提供更个性化的推荐
-11. 实现实时消息推送功能
-12. 优化前端UI/UX设计，提升用户体验
-13. 增加离线功能和PWA支持
-14. 推荐三层机制需要重新规划，避免大模型幻象
-15. 用户记忆的隔离
-16. 输出阻塞还是流式问题
-17. 用户画像问题：通过累计长期的用户对话进行分析，降低大模型幻象
+### 📋 待规划
+- [ ] 推荐算法多维度扩展（时间、天气、季节）
+- [ ] Redis 缓存层性能优化
+- [ ] 单元测试与集成测试覆盖
+- [ ] 用户画像系统深化
+- [ ] PWA 离线支持
+- [ ] 实时消息推送
+- [ ] UI/UX 设计升级
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="#">Your Team</a>
+</p>
